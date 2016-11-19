@@ -15,8 +15,8 @@ import com.google.blockly.model.WorkspacePoint;
 /**
  * {@code PendingDrag} collects all the information related to an in-progress drag of a
  * {@link BlockView}.  It is initialized by {@link Dragger}, passed to a {@link Dragger.DragHandler}
- * which calls {@link #setDragGroup(BlockGroup)} to inform the dragger how to complete the rest of
- * the drag behavior.
+ * which calls {@link #startDrag} to inform the Dragger how to complete the rest of the drag
+ * behavior.
  */
 // TODO(#233): Rename to PendingGesture or similar
 public final class PendingDrag {
@@ -52,6 +52,7 @@ public final class PendingDrag {
     // (possibly scaled by zoom, if within a WorkspaceView).
     private final int mTouchDownBlockX;
     private final int mTouchDownBlockY;
+    private ViewPoint mDragTouchOffset = null;
 
     private BlockGroup mDragGroup;
     private BlockView mRootBlockView;
@@ -130,7 +131,7 @@ public final class PendingDrag {
 
     /**
      * @return The X offset of the initial {@link MotionEvent#ACTION_DOWN} event, from the left side
-     *         of the view in local view pixels.
+     *         of the first touched view in local view pixels.
      */
     public float getTouchDownViewOffsetX() {
         return mTouchDownBlockX;
@@ -138,13 +139,13 @@ public final class PendingDrag {
 
     /**
      * @return The Y offset of the initial {@link MotionEvent#ACTION_DOWN} event, from the top of
-     *         the view in local view pixels.
+     *         the first touched view in local view pixels.
      */
     public float getTouchDownViewOffsetY() {
         return mTouchDownBlockY;
     }
 
-    /**
+    /*
      * @return The workspace coordinates of the initial {@link MotionEvent#ACTION_DOWN} event.
      */
     public WorkspacePoint getTouchDownWorkspaceCoordinates() {
@@ -154,13 +155,13 @@ public final class PendingDrag {
     /**
      * This sets the draggable {@link BlockGroup}, containing all the dragged blocks.
      * {@code dragGroup} must be a root block added to the {@link WorkspaceView}, with it's first
-     * {@link Block} added as a root block in the {@link Workspace}.  The touch offset will be
-     * inferred from the delta between block's workspace location and the initial touch down
-     * workspace location.
+     * {@link Block} added as a root block in the {@link Workspace}.
      *
      * @param dragGroup The draggable {@link BlockGroup}.
+     * @param touchOffset The touch offset from the top left corner of {@code dragGroup}, in view
+     *                    pixels.
      */
-    public void setDragGroup(@NonNull BlockGroup dragGroup) {
+    public void startDrag(@NonNull BlockGroup dragGroup, ViewPoint touchOffset) {
         if (dragGroup == null) {
             throw new IllegalArgumentException("DragGroup cannot be null");
         }
@@ -180,6 +181,7 @@ public final class PendingDrag {
         }
 
         mOriginalBlockPosition.setFrom(dragGroup.getFirstBlock().getPosition());
+        mDragTouchOffset = touchOffset;
     }
 
     /**
@@ -194,6 +196,13 @@ public final class PendingDrag {
      */
     public BlockGroup getDragGroup() {
         return mDragGroup;
+    }
+
+    /**
+     * @return The touch offset from the top left corner of the dragged BlockGroup, in view pixels.
+     */
+    public ViewPoint getDragTouchOffset() {
+        return mDragTouchOffset;
     }
 
     /**

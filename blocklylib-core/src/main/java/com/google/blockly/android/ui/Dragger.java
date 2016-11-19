@@ -16,6 +16,7 @@
 package com.google.blockly.android.ui;
 
 import android.content.ClipData;
+import android.graphics.Point;
 import android.graphics.Rect;
 import android.os.Handler;
 import android.support.annotation.IntDef;
@@ -40,6 +41,7 @@ import com.google.blockly.model.WorkspacePoint;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 /**
  * Controller for dragging blocks and groups of blocks within a workspace.
@@ -76,7 +78,7 @@ public class Dragger {
          * {@link Dragger} is designed to catch these calls and forcibly crash.  Just don't do it.
          * <p/>
          * When the {@link Runnable} is called, it should proceed with the {@code Block} and
-         * {@code BlockView} manipulations, and call {@link PendingDrag#setDragGroup(BlockGroup)} to
+         * {@code BlockView} manipulations, and call {@link PendingDrag#startDrag} to
          * assign the draggable {@link BlockGroup}, which must contain a root block on the
          * {@link Workspace} and be added to the {@link WorkspaceView}.
          * <p/>
@@ -567,8 +569,8 @@ public class Dragger {
                         removeDraggedConnectionsFromConnectionManager(rootBlock);
                         ClipData clipData = ClipData.newPlainText(
                                 WorkspaceView.BLOCK_GROUP_CLIP_DATA_LABEL, "");
-                        dragGroup.startDrag(clipData,
-                                new View.DragShadowBuilder(), null, 0);
+
+                        dragGroup.startDrag(clipData, new DragShadowBuilder(pendingDrag), null, 0);
                     } else {
                         mPendingDrag = null;
                     }
@@ -662,5 +664,30 @@ public class Dragger {
 
     private Pair<Connection, Connection> findBestConnection(Block block) {
         return mConnectionManager.findBestConnection(block, mHelper.getMaxSnapDistance());
+    }
+
+    private static class DragShadowBuilder extends View.DragShadowBuilder {
+        private PendingDrag mPendingDrag;
+        private int mSizeX, mSizeY;
+
+        DragShadowBuilder(PendingDrag pendingDrag) {
+            super(pendingDrag.getDragGroup());
+            mPendingDrag = pendingDrag;
+
+            BlockGroup dragGroup = pendingDrag.getDragGroup();
+            mSizeX = dragGroup.getWidth();
+            if (mSizeX == 0) {
+                dragGroup.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+                dragGroup.layout(0, 0, dragGroup.getMeasuredWidth(), dragGroup.getMeasuredHeight());
+                mSizeX = dragGroup.getWidth();
+            }
+            mSizeY = dragGroup.getHeight();
+        }
+
+        public void onProvideShadowMetrics(Point shadowSize, Point shadowTouchPoint) {
+            shadowSize.set(mSizeX, mSizeY);
+            ViewPoint dragTouchOffset = mPendingDrag.getDragTouchOffset();
+            shadowTouchPoint.set(dragTouchOffset.x, dragTouchOffset.y);
+        }
     }
 }
