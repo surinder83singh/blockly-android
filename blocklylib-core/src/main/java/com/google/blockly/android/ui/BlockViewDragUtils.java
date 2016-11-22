@@ -29,7 +29,9 @@ import android.view.DragEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
+import android.view.ViewParent;
 
+import com.google.blockly.android.clipboard.BlockClipDataHelper;
 import com.google.blockly.android.control.BlocklyController;
 import com.google.blockly.android.control.ConnectionManager;
 import com.google.blockly.model.Block;
@@ -37,6 +39,7 @@ import com.google.blockly.model.Connection;
 import com.google.blockly.model.Workspace;
 import com.google.blockly.model.WorkspacePoint;
 
+import java.io.IOException;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
@@ -80,7 +83,8 @@ public class BlockViewDragUtils {
 
     private Handler mMainHandler;
     private final BlocklyController mController;
-    private final WorkspaceHelper mHelper;
+    private final WorkspaceHelper mViewHelper;
+    private final BlockClipDataHelper mClipHelper;
     private final Workspace mWorkspace;
     private final ConnectionManager mConnectionManager;
 
@@ -183,7 +187,8 @@ public class BlockViewDragUtils {
     public BlockViewDragUtils(BlocklyController blocklyController) {
         mController = blocklyController;
         mWorkspace = blocklyController.getWorkspace();
-        mHelper = blocklyController.getWorkspaceHelper();
+        mViewHelper = blocklyController.getWorkspaceHelper();
+        mClipHelper = blocklyController.getClipDataHelper();
         mConnectionManager = mWorkspace.getConnectionManager();
 
         mMainHandler = new Handler();
@@ -287,7 +292,7 @@ public class BlockViewDragUtils {
         Pair<Connection, Connection> connectionCandidate =
                 findBestConnection(mPendingDrag.getRootDraggedBlock());
         if (connectionCandidate != null) {
-            mHighlightedBlockView = mHelper.getView(connectionCandidate.second.getBlock());
+            mHighlightedBlockView = mViewHelper.getView(connectionCandidate.second.getBlock());
             mHighlightedBlockView.setHighlightedConnection(connectionCandidate.second);
         }
 
@@ -529,16 +534,33 @@ public class BlockViewDragUtils {
                     if (dragStarted) {
                         mPendingDrag = pendingDrag;
                         final BlockGroup dragGroup = mPendingDrag.getDragGroup();
-                        if (dragGroup.getParent() != mWorkspaceView) {
+                        ViewParent parent = dragGroup.getParent();
+                        // TODO(#): Allow unparented BlockGroups (new blocks from Toolbox, etc.)
+                        if (parent != mWorkspaceView) {
                             throw new IllegalStateException("dragGroup is root in WorkspaceView");
                         }
 
-                        Block rootBlock = dragGroup.getFirstBlock();
-                        removeDraggedConnectionsFromConnectionManager(rootBlock);
-                        ClipData clipData = ClipData.newPlainText(
-                                WorkspaceView.BLOCK_GROUP_CLIP_DATA_LABEL, "");
+                        try {
+                            ClipData clipData = mClipHelper.buildDragClipData(pendingDrag);
 
-                        dragGroup.startDrag(clipData, new DragShadowBuilder(pendingDrag), null, 0);
+                            Block rootBlock = dragGroup.getFirstBlock();
+                            removeDraggedConnectionsFromConnectionManager(rootBlock);
+
+                            int dragFlags = 0;
+                            if (android.os.Build.VERSION.SDK_INT >= 24) {
+                                // TODO(#): Allow app to configure DRAG_FLAG_GLOBAL or _OPAQUE?
+                                dragFlags |= 0x00000100;  // View.DRAG_FLAG_GLOBAL
+                                dragFlags |= 0x00000200;  // View.DRAG_FLAG_OPAQUE
+                            }
+                            dragGroup.startDrag(
+                                    clipData,
+                                    new DragShadowBuilder(pendingDrag),
+                                    pendingDrag,
+                                    dragFlags);
+                        } catch (IOException e) {
+                            // Serialization failed in ClipDataHelper.
+                            mPendingDrag = null;
+                        }
                     } else {
                         mPendingDrag = null;
                     }
@@ -569,7 +591,7 @@ public class BlockViewDragUtils {
         mTrashRect.offset((mTempScreenCoord1[0] - mTrashRect.left), (mTempScreenCoord1[1] - mTrashRect.top));
         // Get the touch location on the screen
         mTempViewPoint.set((int) event.getX(), (int) event.getY());
-        mHelper.virtualViewToScreenCoordinates(mTempViewPoint, mTempViewPoint);
+        mViewHelper.virtualViewToScreenCoordinates(mTempViewPoint, mTempViewPoint);
 
         // Check if the touch location was on the trash
         return mTrashRect.contains(mTempViewPoint.x, mTempViewPoint.y);
@@ -617,7 +639,7 @@ public class BlockViewDragUtils {
         ViewPoint curDragLocationPixels = mTempViewPoint;
         curDragLocationPixels.set((int) event.getX(), (int) event.getY());
         WorkspacePoint curDragPositionWorkspace = mTempWorkspacePoint;
-        mHelper.virtualViewToWorkspaceCoordinates(curDragLocationPixels, curDragPositionWorkspace);
+        mViewHelper.virtualViewToWorkspaceCoordinates(curDragLocationPixels, curDragPositionWorkspace);
 
         WorkspacePoint touchDownWorkspace = mPendingDrag.getTouchDownWorkspaceCoordinates();
         // Subtract original drag location from current location to get delta
@@ -631,7 +653,7 @@ public class BlockViewDragUtils {
     }
 
     private Pair<Connection, Connection> findBestConnection(Block block) {
-        return mConnectionManager.findBestConnection(block, mHelper.getMaxSnapDistance());
+        return mConnectionManager.findBestConnection(block, mViewHelper.getMaxSnapDistance());
     }
 
     private static class DragShadowBuilder extends View.DragShadowBuilder {

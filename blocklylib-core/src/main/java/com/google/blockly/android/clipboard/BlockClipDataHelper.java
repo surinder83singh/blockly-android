@@ -19,9 +19,13 @@ import android.content.ClipData;
 
 import com.google.blockly.android.control.BlocklyController;
 import com.google.blockly.android.ui.BlockViewFactory;
+import com.google.blockly.android.ui.BlockGroup;
+import com.google.blockly.android.ui.PendingDrag;
 import com.google.blockly.android.ui.WorkspaceHelper;
 import com.google.blockly.model.Block;
 import com.google.blockly.model.BlockFactory;
+
+import java.io.IOException;
 
 
 /**
@@ -46,4 +50,13 @@ public interface BlockClipDataHelper {
      * @param clipData The incoming clipboard data.
      */
     boolean isBlockData(ClipData clipData);
+
+    /**
+     * Constructs a new populated {@link ClipData} using the information from a {@link PendingDrag}.
+     * It also sets the PendingDrag as the backing local state.
+     *
+     * @param pendingDrag The source of clip
+     * @return A new {@link ClipData} representing the drag and dragged {@link BlockGroup}.
+     */
+    ClipData buildDragClipData(PendingDrag pendingDrag) throws IOException;
 }

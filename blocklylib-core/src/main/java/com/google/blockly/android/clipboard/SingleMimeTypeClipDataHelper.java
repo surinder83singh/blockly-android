@@ -17,8 +17,15 @@ package com.google.blockly.android.clipboard;
 
 import android.content.ClipData;
 import android.content.Context;
+import android.content.Intent;
 
 import com.google.blockly.android.control.BlocklyController;
+import com.google.blockly.android.ui.PendingDrag;
+import com.google.blockly.android.ui.WorkspaceHelper;
+import com.google.blockly.model.Block;
+import com.google.blockly.utils.BlocklyXmlHelper;
+
+import java.io.IOException;
 
 /**
  * Implements ClipDataTransformer with a single support MIME type.  Uses intent extras as the
@@ -26,15 +33,12 @@ import com.google.blockly.android.control.BlocklyController;
  */
 public class SingleMimeTypeClipDataHelper implements BlockClipDataHelper {
     public static final String EXTRA_BLOCKLY_XML = "BLOCKLY_XML";
-    public static final String EXTRA_DRAG_SHADOW_WIDTH = "DRAG_SHADOW_WIDTH";
-    public static final String EXTRA_DRAG_SHADOW_HEIGHT = "DRAG_SHADOW_HEIGHT";
-    public static final String EXTRA_DRAG_OFFSET_X = "DRAG_OFFSET_X";
-    public static final String EXTRA_DRAG_OFFSET_Y = "DRAG_OFFSET_Y";
 
     protected final String mMimeType;
     protected final int mClipLabelRes;  // TODO(#): Singular vs plural ("block" vs "blocks")
 
     protected BlocklyController mController;
+    protected WorkspaceHelper mViewHelper;
     protected Context mContext;
     protected String mClipLabel;
 
@@ -53,6 +57,8 @@ public class SingleMimeTypeClipDataHelper implements BlockClipDataHelper {
     @Override
     public void setController(BlocklyController controller) {
         mController = controller;
+        mViewHelper = controller.getWorkspaceHelper();
+
         mContext = mController.getContext();
         mClipLabel = mContext.getResources().getString(mClipLabelRes);
     }
@@ -60,5 +66,17 @@ public class SingleMimeTypeClipDataHelper implements BlockClipDataHelper {
     @Override
     public boolean isBlockData(ClipData clipData) {
         return false;
+    }
+
+    @Override
+    public ClipData buildDragClipData(PendingDrag drag) throws IOException {
+        Block root = drag.getRootDraggedBlock();
+        String xml = BlocklyXmlHelper.writeBlockToXml(root);
+        
+        Intent intent = new Intent();
+        intent.putExtra(EXTRA_BLOCKLY_XML, xml);
+        ClipData.Item item = new ClipData.Item(intent);
+
+        return new ClipData(mClipLabel, new String[] {mMimeType}, item);
     }
 }
