@@ -108,7 +108,7 @@ public class BlockListView extends RecyclerView {
             mOnDragListBlock = onDragListBlock;
 
             Dragger dragger = controller.getDragger();
-            mTouchHandler = dragger.buildImmediateDragBlockTouchHandler(new DragHandler());
+            mTouchHandler = dragger.buildImmediateDragBlockTouchHandler(new GestureHandler());
         }
 
         // Update all currently visible BlockGroups.
@@ -209,8 +209,8 @@ public class BlockListView extends RecyclerView {
         return Pair.create(dragGroup, touchOffset);
     }
 
-    /** {@link Dragger.DragHandler} implementation for BlockListViews. */
-    private class DragHandler implements Dragger.DragHandler {
+    /** {@link BlockView.GestureHandler} implementation for BlockListViews. */
+    private class GestureHandler implements BlockView.GestureHandler {
         @Override
         public Runnable maybeGetDragGroupCreator(final PendingDrag pendingDrag) {
             return new Runnable() {
@@ -225,7 +225,6 @@ public class BlockListView extends RecyclerView {
                                 dragGroupAndTouchOffset.first,
                                 dragGroupAndTouchOffset.second);
                     }
-
                 }
             };
         }

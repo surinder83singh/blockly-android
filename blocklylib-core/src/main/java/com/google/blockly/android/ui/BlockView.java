@@ -26,6 +26,7 @@ import android.view.ViewParent;
 import com.google.blockly.model.Block;
 import com.google.blockly.model.Connection;
 import com.google.blockly.model.Input;
+import com.google.blockly.model.Workspace;
 
 /**
  * Draws a block and handles laying out all its inputs/fields.
@@ -35,6 +36,44 @@ import com.google.blockly.model.Input;
  * {@link NonPropagatingViewGroup}.
  */
 public interface BlockView {
+    /**
+     * Interface for processing a touch gestures on {@link BlockView}s.
+     */
+    interface GestureHandler {
+        /**
+         * This method checks whether the pending drag maps to a valid draggable {@link BlockGroup}
+         * on the workspace.  If it does, it should return a {@link Runnable} that will perform (at
+         * a later time) the necessary {@link Block} and {@link BlockView} manipulations to
+         * construct that drag group, and assign it to the {@link PendingDrag}.  Such manipulations
+         * must not occur immediately, because this can result in recursive touch events.  The
+         * {@link Dragger} is designed to catch these calls and forcibly crash.  Just don't do it.
+         * <p/>
+         * When the {@link Runnable} is called, it should proceed with the {@code Block} and
+         * {@code BlockView} manipulations, and call {@link PendingDrag#startDrag} to
+         * assign the draggable {@link BlockGroup}, which must contain a root block on the
+         * {@link Workspace} and be added to the {@link WorkspaceView}.
+         * <p/>
+         * If pending drag does not map to a draggable, this method should return null.
+         *
+         * @param pendingDrag The pending drag state in question.
+         * @return If pending drag is a valid drag start, the function to create the draggable
+         *         {@link BlockGroup}. Otherwise, null.
+         */
+        @Nullable Runnable maybeGetDragGroupCreator(PendingDrag pendingDrag);
+
+        /**
+         * Handles click events on blocks.
+         *
+         * @param pendingDrag The pending drag state in question.
+         * @return True if click was processed and event should be captured.
+         */
+        boolean onBlockClicked(PendingDrag pendingDrag);
+
+        // TODO(#202): onDragCancel(BlockGroup dragGroup) to support invalid drop locations.
+        //     For instance, returning a block to the trash. Currently drops at the last move
+        //     location.
+    }
+
     /**
      * @return The block represented by this view.
      */

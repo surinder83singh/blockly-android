@@ -68,7 +68,7 @@ public final class PendingDrag {
     private boolean mClicked;
 
     /**
-     * Constructs a new PendingDrag that, if accepted by the DragHandler, begins with the
+     * Constructs a new PendingDrag that, if accepted by the GestureHandler, begins with the
      * {@code actionDown} event.
      *
      * @param controller The activity's {@link BlocklyController}.

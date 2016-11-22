@@ -133,7 +133,7 @@ public class BlocklyController {
         }
     };
 
-    private final Dragger.DragHandler mWorkspaceDragHandler = new Dragger.DragHandler() {
+    private final BlockView.GestureHandler mBlockGestureHandler = new BlockView.GestureHandler() {
         @Override
         public Runnable maybeGetDragGroupCreator(final PendingDrag pendingDrag) {
             BlockView touchedView = pendingDrag.getTouchedBlockView();
@@ -233,7 +233,7 @@ public class BlocklyController {
         }
 
         mDragger = new Dragger(this);
-        mTouchHandler = mDragger.buildSloppyBlockTouchHandler(mWorkspaceDragHandler);
+        mTouchHandler = mDragger.buildSloppyBlockTouchHandler(mBlockGestureHandler);
     }
 
     /**

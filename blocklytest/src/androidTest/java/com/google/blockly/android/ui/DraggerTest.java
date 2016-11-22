@@ -94,7 +94,7 @@ public class DraggerTest extends MockitoAndroidTestCase {
     Block mTargetBlock;
     BlockView mTouchedView;
 
-    Dragger.DragHandler mDragHandler = new Dragger.DragHandler() {
+    BlockView.GestureHandler mBlockGestureHandler = new BlockView.GestureHandler() {
         @Nullable
         @Override
         public Runnable maybeGetDragGroupCreator(PendingDrag pendingDrag) {
@@ -153,7 +153,7 @@ public class DraggerTest extends MockitoAndroidTestCase {
 
                 mDragger = new Dragger(mMockController);
                 mDragger.setWorkspaceView(mWorkspaceView);
-                mTouchHandler = mDragger.buildSloppyBlockTouchHandler(mDragHandler);
+                mTouchHandler = mDragger.buildSloppyBlockTouchHandler(mBlockGestureHandler);
 
                 // Since we can't create DragEvents...
                 when(mDragStartedEvent.getAction()).thenReturn(DragEvent.ACTION_DRAG_STARTED);
@@ -336,7 +336,7 @@ public class DraggerTest extends MockitoAndroidTestCase {
                 MotionEvent me = MotionEvent.obtain(
                         mDragStartTime, mDragStartTime, MotionEvent.ACTION_DOWN, 0, 0, 0);
                 mDragger.onTouchBlockImpl(
-                        Dragger.DRAG_MODE_SLOPPY, mDragHandler, mTouchedView, me, false);
+                        Dragger.DRAG_MODE_SLOPPY, mBlockGestureHandler, mTouchedView, me, false);
             }
         }, TIMEOUT);
     }
@@ -350,7 +350,7 @@ public class DraggerTest extends MockitoAndroidTestCase {
                         MotionEvent.obtain(time, time, MotionEvent.ACTION_MOVE, 30, -10, 0);
                 assertTrue("Events that initiate drags must be claimed",
                         mDragger.onTouchBlockImpl(
-                                Dragger.DRAG_MODE_SLOPPY, mDragHandler, mTouchedView, me, false));
+                                Dragger.DRAG_MODE_SLOPPY, mBlockGestureHandler, mTouchedView, me, false));
             }
         }, TIMEOUT);
 

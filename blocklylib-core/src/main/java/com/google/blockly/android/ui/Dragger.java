@@ -20,7 +20,6 @@ import android.graphics.Point;
 import android.graphics.Rect;
 import android.os.Handler;
 import android.support.annotation.IntDef;
-import android.support.annotation.Nullable;
 import android.support.annotation.Size;
 import android.support.annotation.VisibleForTesting;
 import android.support.v4.view.MotionEventCompat;
@@ -62,43 +61,6 @@ public class Dragger {
     @IntDef({FINISH_BEHAVIOR_DROP, FINISH_BEHAVIOR_REVERT, FINISH_BEHAVIOR_DELETED})
     public @interface FinishDragBehavior {}
 
-
-    /**
-     * Interface for processing a drag behavior.
-     */
-    // TODO(#233): Include clicks. Rename. BlockTouchHandler sounds good, but...
-    public interface DragHandler {
-        /**
-         * This method checks whether the pending drag maps to a valid draggable {@link BlockGroup}
-         * on the workspace.  If it does, it should return a {@link Runnable} that will perform (at
-         * a later time) the necessary {@link Block} and {@link BlockView} manipulations to
-         * construct that drag group, and assign it to the {@link PendingDrag}.  Such manipulations
-         * must not occur immediately, because this can result in recursive touch events.  The
-         * {@link Dragger} is designed to catch these calls and forcibly crash.  Just don't do it.
-         * <p/>
-         * When the {@link Runnable} is called, it should proceed with the {@code Block} and
-         * {@code BlockView} manipulations, and call {@link PendingDrag#startDrag} to
-         * assign the draggable {@link BlockGroup}, which must contain a root block on the
-         * {@link Workspace} and be added to the {@link WorkspaceView}.
-         * <p/>
-         * If pending drag does not map to a draggable, this method should return null.
-         *
-         * @param pendingDrag The pending drag state in question.
-         */
-        @Nullable Runnable maybeGetDragGroupCreator(PendingDrag pendingDrag);
-
-        /**
-         * Handles click events on blocks.
-         *
-         * @param pendingDrag The pending drag state in question.
-         * @return True if click was processed and event should be captured.
-         */
-        boolean onBlockClicked(PendingDrag pendingDrag);
-
-        // TODO(#202): onDragCancel(BlockGroup dragGroup) to support invalid drop locations.
-        //     For instance, returning a block to the trash. Currently drops at the last move
-        //     location.
-    }
 
     @Retention(RetentionPolicy.SOURCE)
     @IntDef({DRAG_MODE_IMMEDIATE, DRAG_MODE_SLOPPY})
@@ -259,15 +221,17 @@ public class Dragger {
      * Creates a BlockTouchHandler that will initiate a drag only after the user has dragged
      * beyond some touch threshold.
      *
-     * @param dragHandler The {@link DragHandler} to handle gestures for the constructed
-     *                    {@link BlockTouchHandler}.
+     * @param blockGestureHandler The {@link BlockView.GestureHandler} to handle gestures for the
+     *                          constructed {@link BlockTouchHandler}.
      * @return A newly constructed {@link BlockTouchHandler}.
      */
-    public BlockTouchHandler buildSloppyBlockTouchHandler(final DragHandler dragHandler) {
+    public BlockTouchHandler buildSloppyBlockTouchHandler(
+            final BlockView.GestureHandler blockGestureHandler) {
+
         return new BlockTouchHandler() {
             @Override
             public boolean onTouchBlock(BlockView blockView, MotionEvent motionEvent) {
-                return onTouchBlockImpl(DRAG_MODE_SLOPPY, dragHandler, blockView, motionEvent,
+                return onTouchBlockImpl(DRAG_MODE_SLOPPY, blockGestureHandler, blockView, motionEvent,
                         /* interceptMode */ false);
             }
 
@@ -275,7 +239,7 @@ public class Dragger {
             public boolean onInterceptTouchEvent(BlockView blockView, MotionEvent motionEvent) {
                 // Intercepted move events might still be handled but the child view, such as
                 // a drop down field.
-                return onTouchBlockImpl(DRAG_MODE_SLOPPY, dragHandler, blockView, motionEvent,
+                return onTouchBlockImpl(DRAG_MODE_SLOPPY, blockGestureHandler, blockView, motionEvent,
                         /* interceptMode */ true);
             }
         };
@@ -285,21 +249,25 @@ public class Dragger {
      * Creates a BlockTouchHandler that will initiate a drag as soon as the BlockView receives a
      * {@link MotionEvent} directly (not via interception).
      *
-     * @param dragHandler The {@link DragHandler} to handle gestures for the constructed
-     *                    {@link BlockTouchHandler}.
+     * @param blockGestureHandler The {@link BlockView.GestureHandler} to handle gestures for the
+     *                          constructed {@link BlockTouchHandler}.
      * @return A newly constructed {@link BlockTouchHandler}.
      */
-    public BlockTouchHandler buildImmediateDragBlockTouchHandler(final DragHandler dragHandler) {
+    public BlockTouchHandler buildImmediateDragBlockTouchHandler(
+            final BlockView.GestureHandler blockGestureHandler) {
+
         return new BlockTouchHandler() {
             @Override
             public boolean onTouchBlock(BlockView blockView, MotionEvent motionEvent) {
-                return onTouchBlockImpl(DRAG_MODE_IMMEDIATE, dragHandler, blockView, motionEvent,
+                return onTouchBlockImpl(
+                        DRAG_MODE_IMMEDIATE, blockGestureHandler, blockView, motionEvent,
                         /* interceptMode */ false);
             }
 
             @Override
             public boolean onInterceptTouchEvent(BlockView blockView, MotionEvent motionEvent) {
-                return onTouchBlockImpl(DRAG_MODE_IMMEDIATE, dragHandler, blockView, motionEvent,
+                return onTouchBlockImpl(
+                        DRAG_MODE_IMMEDIATE, blockGestureHandler, blockView, motionEvent,
                         /* interceptMode */ true);
             }
         };
@@ -401,7 +369,7 @@ public class Dragger {
      * allows any underlying View, such as a field to handle the MotionEvent normally.
      *
      * @param dragMode The mode (immediate or sloppy) for handling this touch event.
-     * @param dragHandler The {@link DragHandler} attached to this view.
+     * @param blockGestureHandler The {@link BlockView.GestureHandler} attached to this view.
      * @param touchedView The {@link BlockView} that detected a touch event.
      * @param event The touch event.
      * @param interceptMode When true forces all {@link MotionEvent#ACTION_MOVE} events
@@ -411,8 +379,8 @@ public class Dragger {
      * @return True if the event was handled by this touch implementation.
      */
     @VisibleForTesting
-    boolean onTouchBlockImpl(@DragMode int dragMode, DragHandler dragHandler, BlockView touchedView,
-                             MotionEvent event, boolean interceptMode) {
+    boolean onTouchBlockImpl(@DragMode int dragMode, BlockView.GestureHandler blockGestureHandler,
+                             BlockView touchedView, MotionEvent event, boolean interceptMode) {
         if (mWithinOnTouchBlockImpl) {
             throw new IllegalStateException(
                     "onTouchBlockImpl() called recursively. Make sure OnDragHandler." +
@@ -452,7 +420,7 @@ public class Dragger {
                 } else {
                     // The user touched the block directly.
                     if (dragMode == DRAG_MODE_IMMEDIATE) {
-                        result = maybeStartDrag(dragHandler);
+                        result = maybeStartDrag(blockGestureHandler);
                     } else {
                         result = true;
                     }
@@ -461,7 +429,7 @@ public class Dragger {
                 // The Pending Drag was created during intercept, but the child did not handle it
                 // and the event has bubbled down to here.
                 if (dragMode == DRAG_MODE_IMMEDIATE) {
-                    result = maybeStartDrag(dragHandler);
+                    result = maybeStartDrag(blockGestureHandler);
                 } else {
                     result = true;
                 }
@@ -480,7 +448,7 @@ public class Dragger {
                             (!interceptMode && dragMode == DRAG_MODE_IMMEDIATE
                                     && event.getDownTime() > TAP_TIMEOUT)
                             || isBeyondSlopThreshold(event);
-                    boolean isNewDrag = isDragGesture && maybeStartDrag(dragHandler);
+                    boolean isNewDrag = isDragGesture && maybeStartDrag(blockGestureHandler);
                     result = isNewDrag || !interceptMode;
                 }
             }
@@ -488,7 +456,7 @@ public class Dragger {
             else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
                 if (!mPendingDrag.isDragging()) {
                     if (!interceptMode && mPendingDrag.isClick()) {
-                        dragHandler.onBlockClicked(mPendingDrag);
+                        blockGestureHandler.onBlockClicked(mPendingDrag);
                     }
                     finishDragging(FINISH_BEHAVIOR_REVERT);
                 }
@@ -541,11 +509,13 @@ public class Dragger {
      * has been dragged more than {@code mTouchSlop} and starts a drag if necessary. Once the drag
      * has been started, all following events will be handled through the {@link
      * #mDragEventListener}.
+     *
+     * @param blockGestureHandler The {@link BlockView.GestureHandler} managing this drag.
      */
-    private boolean maybeStartDrag(DragHandler dragHandler) {
+    private boolean maybeStartDrag(BlockView.GestureHandler blockGestureHandler) {
         // Check with the pending drag handler to select or create the dragged group.
         final PendingDrag pendingDrag = mPendingDrag;  // Stash for async callback
-        final Runnable dragGroupCreator = dragHandler.maybeGetDragGroupCreator(pendingDrag);
+        final Runnable dragGroupCreator = blockGestureHandler.maybeGetDragGroupCreator(pendingDrag);
         final boolean foundDragGroup = (dragGroupCreator != null);
         if (foundDragGroup) {
             mMainHandler.post(new Runnable() {
