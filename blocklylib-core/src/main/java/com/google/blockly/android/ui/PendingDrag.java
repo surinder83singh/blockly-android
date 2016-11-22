@@ -14,9 +14,9 @@ import com.google.blockly.model.WorkspacePoint;
 
 /**
  * {@code PendingDrag} collects all the information related to an in-progress drag of a
- * {@link BlockView}.  It is initialized by {@link Dragger}, passed to a {@link Dragger.DragHandler}
- * which calls {@link #startDrag} to inform the Dragger how to complete the rest of the drag
- * behavior.
+ * {@link BlockView}.  It is initialized by {@link BlockViewDragUtils}, passed to a
+ * {@link BlockView.GestureHandler} which calls {@link #startDrag} to inform the
+ * {@link BlockViewDragUtils} how to complete the rest of the drag behavior.
  */
 // TODO(#233): Rename to PendingGesture or similar
 public final class PendingDrag {
@@ -30,7 +30,7 @@ public final class PendingDrag {
      * stream at least this often during the drag.  Further, by detecting and resetting the state,
      * it is possible to recover for new drags, rather than locking the drag state in under the
      * presumption the missing UP or CANCEL will eventually arrive.  The latter case prevents
-     * the {@link Dragger} from detecting future drag gestures.
+     * the {@link BlockViewDragUtils} from detecting future drag gestures.
      */
     private long MAX_MOTION_EVENT_MILLISECONDS_DELTA = 500;
 
@@ -43,7 +43,7 @@ public final class PendingDrag {
     private final @Size(2) int[] mTouchDownScreen = new int[2];
 
     /**
-     * The workspace location of the first touch, even if the touch occured outside the
+     * The workspace location of the first touch, even if the touch occurred outside the
      * {@link VirtualWorkspaceView}.
      */
     private final WorkspacePoint mTouchDownWorkspace = new WorkspacePoint();
@@ -243,7 +243,7 @@ public final class PendingDrag {
      * to determine if the event triggers a click (or other interesting gestures in the future).
      * Check {@link #isClick()} to determine whether a click was detected.
      * <p/>
-     * This method should only be called from {@link Dragger#onTouchBlockImpl}.
+     * This method should only be called from {@link BlockViewDragUtils#onTouchBlockImpl}.
      *
      * @param event The event to compare to.
      * @param touchedView The view that received the touch event.

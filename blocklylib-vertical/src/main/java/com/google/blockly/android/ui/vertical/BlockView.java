@@ -30,7 +30,7 @@ import android.support.annotation.Nullable;
 import android.view.MotionEvent;
 
 import com.google.blockly.android.control.ConnectionManager;
-import com.google.blockly.android.ui.Dragger;
+import com.google.blockly.android.ui.BlockViewDragUtils;
 import com.google.blockly.android.ui.AbstractBlockView;
 import com.google.blockly.android.ui.BlockTouchHandler;
 import com.google.blockly.android.ui.ViewPoint;
@@ -103,7 +103,7 @@ public class BlockView extends AbstractBlockView<InputView> {
      * @param inputViews The {@link InputView} contained in this view.
      * @param connectionManager The {@link ConnectionManager} to update when moving connections.
      * @param touchHandler The optional handler for forwarding touch events on this block to the
-     *                     {@link Dragger}.
+     *                     {@link BlockViewDragUtils}.
      */
     protected BlockView(Context context, WorkspaceHelper helper, VerticalBlockViewFactory factory,
                         Block block, List<InputView> inputViews,

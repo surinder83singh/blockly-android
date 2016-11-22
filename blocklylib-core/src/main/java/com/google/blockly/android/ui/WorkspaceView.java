@@ -43,7 +43,7 @@ public class WorkspaceView extends NonPropagatingViewGroup {
 
     private BlocklyController mController = null;
     private WorkspaceHelper mHelper = null;
-    private Dragger mDragger;
+    private BlockViewDragUtils mDragUtils;
 
     public WorkspaceView(Context context) {
         this(context, null);
@@ -132,15 +132,15 @@ public class WorkspaceView extends NonPropagatingViewGroup {
     }
 
     /**
-     * Updates the {@link Dragger} for this workspace view and passes through the view for the trash
+     * Updates the {@link BlockViewDragUtils} for this workspace view and passes through the view for the trash
      * can.
      *
-     * @param dragger The {@link Dragger} to use in this workspace.
+     * @param dragUtils The {@link BlockViewDragUtils} to use in this workspace.
      */
-    public void setDragger(Dragger dragger) {
-        mDragger = dragger;
-        mDragger.setTouchSlop(mTouchSlop);
-        setOnDragListener(mDragger.getDragEventListener());
+    public void setBlockViewDragUtils(BlockViewDragUtils dragUtils) {
+        mDragUtils = dragUtils;
+        mDragUtils.setTouchSlop(mTouchSlop);
+        setOnDragListener(mDragUtils.getDragEventListener());
     }
 
     /**

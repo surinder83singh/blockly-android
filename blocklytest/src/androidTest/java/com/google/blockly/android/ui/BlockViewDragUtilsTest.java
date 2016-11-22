@@ -52,9 +52,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 /**
- * Tests for the {@link Dragger}.
+ * Tests for the {@link BlockViewDragUtils}.
  */
-public class DraggerTest extends MockitoAndroidTestCase {
+public class BlockViewDragUtilsTest extends MockitoAndroidTestCase {
     /**
      * Default timeout of 1 second, which should be plenty for most UI actions.  Anything longer
      * is an error.  However, to step through this code with a debugger, use a much longer duration.
@@ -84,7 +84,7 @@ public class DraggerTest extends MockitoAndroidTestCase {
     private WorkspaceHelper mWorkspaceHelper;
     private BlockViewFactory mViewFactory;
     private WorkspaceView mWorkspaceView;
-    private Dragger mDragger;
+    private BlockViewDragUtils mDragUtils;
     private BlockTouchHandler mTouchHandler;
     private BlockFactory mBlockFactory;
 
@@ -128,7 +128,7 @@ public class DraggerTest extends MockitoAndroidTestCase {
     public void setUp() throws Exception {
         super.setUp();
 
-        mThread = new HandlerThread("DraggerTest");
+        mThread = new HandlerThread("BlockViewDragUtilsTest");
         mThread.start();
         mHandler = new Handler(mThread.getLooper());
 
@@ -144,16 +144,16 @@ public class DraggerTest extends MockitoAndroidTestCase {
                 mWorkspaceHelper.setWorkspaceView(mWorkspaceView);
                 mViewFactory = new VerticalBlockViewFactory(mMockContext, mWorkspaceHelper);
 
-                // The following are queried by the Dragger.
+                // The following are queried by the BlockViewDragUtils.
                 Mockito.stub(mMockWorkspace.getConnectionManager()).toReturn(mMockConnectionManager);
                 Mockito.stub(mMockController.getBlockFactory()).toReturn(mBlockFactory);
                 Mockito.stub(mMockController.getWorkspace()).toReturn(mMockWorkspace);
                 Mockito.stub(mMockController.getWorkspaceHelper()).toReturn(mWorkspaceHelper);
                 Mockito.stub(mMockController.getContext()).toReturn(mMockContext);
 
-                mDragger = new Dragger(mMockController);
-                mDragger.setWorkspaceView(mWorkspaceView);
-                mTouchHandler = mDragger.buildSloppyBlockTouchHandler(mBlockGestureHandler);
+                mDragUtils = new BlockViewDragUtils(mMockController);
+                mDragUtils.setWorkspaceView(mWorkspaceView);
+                mTouchHandler = mDragUtils.buildSloppyBlockTouchHandler(mBlockGestureHandler);
 
                 // Since we can't create DragEvents...
                 when(mDragStartedEvent.getAction()).thenReturn(DragEvent.ACTION_DRAG_STARTED);
@@ -335,8 +335,8 @@ public class DraggerTest extends MockitoAndroidTestCase {
                 mDragStartTime = System.currentTimeMillis();
                 MotionEvent me = MotionEvent.obtain(
                         mDragStartTime, mDragStartTime, MotionEvent.ACTION_DOWN, 0, 0, 0);
-                mDragger.onTouchBlockImpl(
-                        Dragger.DRAG_MODE_SLOPPY, mBlockGestureHandler, mTouchedView, me, false);
+                mDragUtils.onTouchBlockImpl(
+                        BlockViewDragUtils.DRAG_MODE_SLOPPY, mBlockGestureHandler, mTouchedView, me, false);
             }
         }, TIMEOUT);
     }
@@ -349,20 +349,20 @@ public class DraggerTest extends MockitoAndroidTestCase {
                 MotionEvent me =
                         MotionEvent.obtain(time, time, MotionEvent.ACTION_MOVE, 30, -10, 0);
                 assertTrue("Events that initiate drags must be claimed",
-                        mDragger.onTouchBlockImpl(
-                                Dragger.DRAG_MODE_SLOPPY, mBlockGestureHandler, mTouchedView, me, false));
+                        mDragUtils.onTouchBlockImpl(
+                                BlockViewDragUtils.DRAG_MODE_SLOPPY, mBlockGestureHandler, mTouchedView, me, false));
             }
         }, TIMEOUT);
 
         // Allow mDragGroupCreator to run.
         await(mDragGroupCreatorLatch, TIMEOUT);
-        assertEquals("Dragger must call Runnable to construct draggable BlockGroup", 1,
+        assertEquals("BlockViewDragUtils must call Runnable to construct draggable BlockGroup", 1,
                 mDragGroupCreatorCallCount);
 
         runAndSync(new Runnable() {
             @Override
             public void run() {
-                mDragger.getDragEventListener().onDrag(mWorkspaceView, mDragStartedEvent);
+                mDragUtils.getDragEventListener().onDrag(mWorkspaceView, mDragStartedEvent);
             }
         }, TIMEOUT);
 
@@ -377,7 +377,7 @@ public class DraggerTest extends MockitoAndroidTestCase {
                 when(mDragLocationEvent.getX()).thenReturn(mDragReleaseX);
                 when(mDragLocationEvent.getY()).thenReturn(mDragReleaseY);
 
-                mDragger.getDragEventListener().onDrag(mWorkspaceView, mDragLocationEvent);
+                mDragUtils.getDragEventListener().onDrag(mWorkspaceView, mDragLocationEvent);
 
                 // Force the connector locations to update before the call to finishDragging().
                 mDragGroup.updateAllConnectorLocations();
@@ -387,7 +387,7 @@ public class DraggerTest extends MockitoAndroidTestCase {
                 when(mDropEvent.getX()).thenReturn(mDragReleaseX);
                 when(mDropEvent.getY()).thenReturn(mDragReleaseY);
 
-                mDragger.getDragEventListener().onDrag(mWorkspaceView, mDropEvent);
+                mDragUtils.getDragEventListener().onDrag(mWorkspaceView, mDropEvent);
             }
         }, TIMEOUT);
     }

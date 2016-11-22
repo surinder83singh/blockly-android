@@ -46,7 +46,7 @@ public interface BlockView {
          * a later time) the necessary {@link Block} and {@link BlockView} manipulations to
          * construct that drag group, and assign it to the {@link PendingDrag}.  Such manipulations
          * must not occur immediately, because this can result in recursive touch events.  The
-         * {@link Dragger} is designed to catch these calls and forcibly crash.  Just don't do it.
+         * {@link BlockViewDragUtils} is designed to catch these calls and forcibly crash.  Just don't do it.
          * <p/>
          * When the {@link Runnable} is called, it should proceed with the {@code Block} and
          * {@code BlockView} manipulations, and call {@link PendingDrag#startDrag} to

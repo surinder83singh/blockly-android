@@ -107,8 +107,8 @@ public class BlockListView extends RecyclerView {
             mConnectionManager = controller.getWorkspace().getConnectionManager();
             mOnDragListBlock = onDragListBlock;
 
-            Dragger dragger = controller.getDragger();
-            mTouchHandler = dragger.buildImmediateDragBlockTouchHandler(new GestureHandler());
+            BlockViewDragUtils dragUtils = controller.getDragUtils();
+            mTouchHandler = dragUtils.buildImmediateDragBlockTouchHandler(new GestureHandler());
         }
 
         // Update all currently visible BlockGroups.

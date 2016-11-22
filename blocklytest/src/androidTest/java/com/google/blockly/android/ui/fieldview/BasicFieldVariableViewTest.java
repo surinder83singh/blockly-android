@@ -62,7 +62,7 @@ public class BasicFieldVariableViewTest extends MockitoAndroidTestCase {
     public void setUp() throws Exception {
         super.setUp();
 
-        mThread = new HandlerThread("DraggerTest");
+        mThread = new HandlerThread("BlockViewDragUtilsTest");
         mThread.start();
         mLooper = mThread.getLooper();
         mHandler = new Handler(mLooper);

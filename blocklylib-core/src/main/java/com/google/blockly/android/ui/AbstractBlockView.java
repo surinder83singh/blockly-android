@@ -88,7 +88,7 @@ public abstract class AbstractBlockView<InputView extends com.google.blockly.and
      * @param inputViews The {@link InputView} children in the new {@link BlockView}.
      * @param connectionManager The {@link ConnectionManager} to update when moving connections.
      * @param touchHandler The optional handler for forwarding touch events on this block to the
-     *                     {@link Dragger}.
+     *                     {@link BlockViewDragUtils}.
      */
     // TODO(#137): Pass in ViewPool instead of BlockViewFactory
     protected AbstractBlockView(Context context, WorkspaceHelper helper, BlockViewFactory factory,

@@ -32,7 +32,7 @@ import com.google.blockly.android.ToolboxFragment;
 import com.google.blockly.android.TrashFragment;
 import com.google.blockly.android.WorkspaceFragment;
 import com.google.blockly.android.clipboard.BlockClipDataHelper;
-import com.google.blockly.android.ui.Dragger;
+import com.google.blockly.android.ui.BlockViewDragUtils;
 import com.google.blockly.android.ui.BlockGroup;
 import com.google.blockly.android.ui.BlockTouchHandler;
 import com.google.blockly.android.ui.BlockView;
@@ -116,7 +116,7 @@ public class BlocklyController {
     private TrashFragment mTrashFragment = null;
     private View mTrashIcon = null;
     private ToolboxFragment mToolboxFragment = null;
-    private Dragger mDragger;
+    private BlockViewDragUtils mDragUtils;
     private VariableCallback mVariableCallback = null;
 
     // For use in bumping neighbors; instance variable only to avoid repeated allocation.
@@ -232,8 +232,8 @@ public class BlocklyController {
             });
         }
 
-        mDragger = new Dragger(this);
-        mTouchHandler = mDragger.buildSloppyBlockTouchHandler(mBlockGestureHandler);
+        mDragUtils = new BlockViewDragUtils(this);
+        mTouchHandler = mDragUtils.buildSloppyBlockTouchHandler(mBlockGestureHandler);
     }
 
     /**
@@ -323,7 +323,7 @@ public class BlocklyController {
             return; // no-op
         }
         mTrashIcon = trashIcon;
-        mDragger.setTrashView(mTrashIcon);
+        mDragUtils.setTrashView(mTrashIcon);
     }
 
     /**
@@ -344,10 +344,10 @@ public class BlocklyController {
     }
 
     /**
-     * @return The {@link Dragger} managing the drag behavior in connected views.
+     * @return The {@link BlockViewDragUtils} managing the drag behavior in connected views.
      */
-    public Dragger getDragger() {
-        return mDragger;
+    public BlockViewDragUtils getDragUtils() {
+        return mDragUtils;
     }
 
     /**
@@ -549,9 +549,13 @@ public class BlocklyController {
 
     /**
      * Set up the {@link WorkspaceView} with this workspace's model. This method will perform the
-     * following steps: <ul> <li>Set the block touch handler for the view.</li> <li>Configure the
-     * dragger for the view.</li> <li>Recursively initialize views for all the blocks in the model
-     * and add them to the view.</li> </ul>
+     * following steps:
+     * <ul>
+     *     <li>Set the block touch handler for the view.</li>
+     *     <li>Configure the drag utils for the view.</li>
+     *     <li>Recursively initialize views for all the blocks in the model and add them to the
+     *     view.</li>
+     * </ul>
      *
      * @param wv The root workspace view to add to.
      */
@@ -568,8 +572,8 @@ public class BlocklyController {
         mWorkspaceView.setController(this);
 
         mHelper.setWorkspaceView(wv);
-        mDragger.setWorkspaceView(mWorkspaceView);
-        mWorkspaceView.setDragger(mDragger);
+        mDragUtils.setWorkspaceView(mWorkspaceView);
+        mWorkspaceView.setBlockViewDragUtils(mDragUtils);
         initBlockViews();
     }
 
@@ -1160,7 +1164,7 @@ public class BlocklyController {
                 }
             }
             if (cleanupStats) {
-                mDragger.removeFromDraggingConnections(block);
+                mDragUtils.removeFromDraggingConnections(block);
             }
         }
         return rootFoundAndRemoved;

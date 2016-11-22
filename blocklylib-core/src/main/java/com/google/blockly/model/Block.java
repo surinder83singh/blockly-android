@@ -210,7 +210,7 @@ public class Block {
      *
      * Blocks are deletable by default.
      *
-     * Warning: The Android Dragger implementation does not respect deletable false state (#305).
+     * Warning: The Android BlockViewDragUtils implementation does not respect deletable false state (#305).
      *
      * @param deletable
      */

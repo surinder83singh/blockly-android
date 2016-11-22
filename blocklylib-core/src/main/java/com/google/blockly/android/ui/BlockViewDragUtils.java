@@ -1,5 +1,5 @@
 /*
- *  Copyright 2015 Google Inc. All Rights Reserved.
+ *  Copyright 2016 Google Inc. All Rights Reserved.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -44,9 +44,8 @@ import java.util.ArrayList;
 /**
  * Controller for dragging blocks and groups of blocks within a workspace.
  */
-// TODO(#233): Rename to BlockViewTouchManager or similar
-public class Dragger {
-    private static final String TAG = "Dragger";
+public class BlockViewDragUtils {
+    private static final String TAG = "BlockViewDragUtils";
     private static final boolean LOG_TOUCH_EVENTS = false;
     private static final boolean LOG_DRAG_EVENTS = false;
 
@@ -181,7 +180,7 @@ public class Dragger {
     /**
      * @param blocklyController The {@link BlocklyController} managing Blocks in this activity.
      */
-    public Dragger(BlocklyController blocklyController) {
+    public BlockViewDragUtils(BlocklyController blocklyController) {
         mController = blocklyController;
         mWorkspace = blocklyController.getWorkspace();
         mHelper = blocklyController.getWorkspaceHelper();
@@ -360,7 +359,7 @@ public class Dragger {
     }
 
     /**
-     * Let the Dragger know that a block was touched. This will be called when the block in the
+     * Let the BlockViewDragUtils know that a block was touched. This will be called when the block in the
      * workspace has been touched, but a drag has not yet been started.
      *
      * This method handles both regular touch events and intercepted touch events, with the latter
