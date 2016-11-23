@@ -16,9 +16,12 @@
 package com.google.blockly.android.clipboard;
 
 import android.content.ClipData;
+import android.content.ClipDescription;
 import android.content.Context;
 import android.content.Intent;
+import android.view.DragEvent;
 
+import com.google.blockly.android.R;
 import com.google.blockly.android.control.BlocklyController;
 import com.google.blockly.android.ui.PendingDrag;
 import com.google.blockly.android.ui.WorkspaceHelper;
@@ -33,6 +36,21 @@ import java.io.IOException;
  */
 public class SingleMimeTypeClipDataHelper implements BlockClipDataHelper {
     public static final String EXTRA_BLOCKLY_XML = "BLOCKLY_XML";
+
+    /**
+     * This constructs a {@link SingleMimeTypeClipDataHelper} with a MIME type derived
+     * from the application's package name. This assumes all Blockly workspaces in an app use with
+     * a shared set of blocks, and blocks can be dragged/copied/pasted them, even if they are
+     * in different Activities. It also ensures blocks from other applications will be rejected.
+     *
+     * @param context
+     * @return
+     */
+    public static BlockClipDataHelper getDefault(Context context) {
+        String mimeType = "application/x-blockly-" + context.getPackageName() + "+xml";
+        return new SingleMimeTypeClipDataHelper(mimeType, R.string.blockly_clipdata_label_default);
+
+    }
 
     protected final String mMimeType;
     protected final int mClipLabelRes;  // TODO(#): Singular vs plural ("block" vs "blocks")
@@ -64,19 +82,35 @@ public class SingleMimeTypeClipDataHelper implements BlockClipDataHelper {
     }
 
     @Override
-    public boolean isBlockData(ClipData clipData) {
-        return false;
-    }
-
-    @Override
     public ClipData buildDragClipData(PendingDrag drag) throws IOException {
         Block root = drag.getRootDraggedBlock();
         String xml = BlocklyXmlHelper.writeBlockToXml(root);
-        
+
         Intent intent = new Intent();
         intent.putExtra(EXTRA_BLOCKLY_XML, xml);
+        // TODO(#): Encode shadow size/offset/zoom info for remote drop targets.
         ClipData.Item item = new ClipData.Item(intent);
 
         return new ClipData(mClipLabel, new String[] {mMimeType}, item);
+    }
+
+    /**
+     * @param descript A description of the incoming clipboard data.
+     * @return True if the MIME type is found.
+     */
+    @Override
+    public boolean isBlockData(ClipDescription descript) {
+        return descript != null && descript.filterMimeTypes(mMimeType).length > 0;
+    }
+
+    /**
+     * @param event The DragEvent containing the PendingDrag.
+     * @return The PendingDrag containing the dragged blocks.
+     */
+    @Override
+    public PendingDrag getPendingDrag(DragEvent event) {
+        // In the future, this will support drags across application boundaries, constructing a new
+        // PendingDrag as necessary. For now, it just extracts the PendingData from the local state.
+        return (PendingDrag) event.getLocalState();
     }
 }

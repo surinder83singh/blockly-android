@@ -24,7 +24,6 @@ import android.support.annotation.Size;
 import android.support.annotation.VisibleForTesting;
 import android.support.v4.view.MotionEventCompat;
 import android.util.Log;
-import android.util.Pair;
 import android.view.DragEvent;
 import android.view.MotionEvent;
 import android.view.View;
@@ -37,7 +36,6 @@ import com.google.blockly.android.control.ConnectionManager;
 import com.google.blockly.model.Block;
 import com.google.blockly.model.Connection;
 import com.google.blockly.model.Workspace;
-import com.google.blockly.model.WorkspacePoint;
 
 import java.io.IOException;
 import java.lang.annotation.Retention;
@@ -54,15 +52,14 @@ public class BlockViewDragUtils {
 
     private static final int TAP_TIMEOUT = ViewConfiguration.getTapTimeout();
 
-    // Modes of finishDragging()
-    private static final int FINISH_BEHAVIOR_DROP = 1;
-    private static final int FINISH_BEHAVIOR_REVERT = 2;
-    private static final int FINISH_BEHAVIOR_DELETED = 3;
-
-    @Retention(RetentionPolicy.SOURCE)
-    @IntDef({FINISH_BEHAVIOR_DROP, FINISH_BEHAVIOR_REVERT, FINISH_BEHAVIOR_DELETED})
-    public @interface FinishDragBehavior {}
-
+    public static String getActionName(DragEvent event) {
+        int action = event.getAction();
+        return (action == DragEvent.ACTION_DRAG_STARTED) ? "DRAG_STARTED" :
+                (action == DragEvent.ACTION_DRAG_LOCATION) ? "DRAG_LOCATION" :
+                (action == DragEvent.ACTION_DRAG_ENDED) ? "DRAG_ENDED" :
+                (action == DragEvent.ACTION_DROP) ? "DROP" :
+                "UNKNOWN ACTION #" + action;
+    }
 
     @Retention(RetentionPolicy.SOURCE)
     @IntDef({DRAG_MODE_IMMEDIATE, DRAG_MODE_SLOPPY})
@@ -79,7 +76,6 @@ public class BlockViewDragUtils {
     private final int[] mTempScreenCoord1 = new int[2];
     private final int[] mTempScreenCoord2 = new int[2];
     private final ViewPoint mTempViewPoint = new ViewPoint();
-    private final WorkspacePoint mTempWorkspacePoint = new WorkspacePoint();
 
     private Handler mMainHandler;
     private final BlocklyController mController;
@@ -106,80 +102,11 @@ public class BlockViewDragUtils {
 
     // Which {@link BlockView} was touched, and possibly may be being dragged.
     private WorkspaceView mWorkspaceView;
-    private BlockView mHighlightedBlockView;
     // The view for the trash can.
     private View mTrashView;
     //The square of the required touch slop before starting a drag, precomputed to avoid
     // square root operations at runtime.
     private float mTouchSlopSquared = 0.0f;
-
-    private View.OnDragListener mDragEventListener = new View.OnDragListener() {
-        @Override
-        public boolean onDrag(View workspaceView, DragEvent event) {
-            final int action = event.getAction();
-
-            if (LOG_DRAG_EVENTS) {
-                String actionName = (action == DragEvent.ACTION_DRAG_STARTED) ? "DRAG_STARTED" :
-                        (action == DragEvent.ACTION_DRAG_LOCATION) ? "DRAG_LOCATION" :
-                        (action == DragEvent.ACTION_DRAG_ENDED) ? "DRAG_ENDED" :
-                        (action == DragEvent.ACTION_DROP) ? "DROP" :
-                        "UNKNOWN ACTION #" + action;
-                Log.d(TAG, "onDrag: " + actionName + ", " + event);
-
-                mMainHandler.removeCallbacks(mLogPending);  // Only log once per event tick
-                mMainHandler.post(mLogPending);
-            }
-
-            if (mPendingDrag != null && mPendingDrag.isDragging()) {
-                switch (action) {
-                    case DragEvent.ACTION_DRAG_STARTED:
-                        // Triggered in maybeStartDrag(..).
-                        // The rest of the drag data is already captured in mPendingDrag.
-                        // NOTE: This event position does not respect view scale.
-
-                        BlockView rootDraggedBlockView = mPendingDrag.getRootDraggedBlockView();
-                        if(rootDraggedBlockView.getBlock().isMovable()) {
-                            // TODO(#35): This might be better described as "selected".
-                            ((View) rootDraggedBlockView).setPressed(true);
-                            return true;    // We want to keep listening for drag events
-                        } else {
-                            return false;   // We don't want to keep listening for drag events
-                        }
-                    case DragEvent.ACTION_DRAG_LOCATION:
-                        // If we're still finishing up a previous drag we may have missed the
-                        // start of the drag, in which case we shouldn't do anything.
-                        continueDragging(event);
-                        break;
-                    case DragEvent.ACTION_DRAG_ENDED:
-                        // TODO(#202): Cancel pending drag?
-                        if (event.getResult()) {
-                            break;
-                        }
-                        // Otherwise fall through
-                    case DragEvent.ACTION_DROP:
-                        // Finalize dragging and reset dragging state flags.
-                        // These state flags are still used in the initial phase of figuring out if a
-                        // drag has started.
-                        int finishBehavior;
-                        if (touchingTrashView(event)) {
-                            if (dropInTrash()) {
-                                finishBehavior = FINISH_BEHAVIOR_DELETED;
-                            } else {
-                                finishBehavior = FINISH_BEHAVIOR_REVERT;
-                            }
-                        } else {
-                            maybeConnectDragGroup();
-                            finishBehavior = FINISH_BEHAVIOR_DROP;
-                        }
-                        finishDragging(finishBehavior);
-                        return true;    // The drop succeeded.
-                    default:
-                        break;
-                }
-            }
-            return false;   // In every case that gets here, the return value won't be checked.
-        }
-    };
 
     /**
      * @param blocklyController The {@link BlocklyController} managing Blocks in this activity.
@@ -192,13 +119,9 @@ public class BlockViewDragUtils {
         mConnectionManager = mWorkspace.getConnectionManager();
 
         mMainHandler = new Handler();
-    }
 
-    /**
-     * @param slop The required touch slop before starting a drag.
-     */
-    public void setTouchSlop(float slop) {
-        mTouchSlopSquared = slop * slop;
+        float touchSlop = ViewConfiguration.get(mController.getContext()).getScaledTouchSlop();
+        mTouchSlopSquared = touchSlop * touchSlop;
     }
 
     /**
@@ -247,7 +170,7 @@ public class BlockViewDragUtils {
                         /* interceptMode */ true);
             }
         };
-    };
+    }
 
     /**
      * Creates a BlockTouchHandler that will initiate a drag as soon as the BlockView receives a
@@ -275,83 +198,6 @@ public class BlockViewDragUtils {
                         /* interceptMode */ true);
             }
         };
-    };
-
-    /**
-     * Continue dragging the currently moving block.  Called during ACTION_DRAG_LOCATION.
-     *
-     * @param event The next drag event to handle, as received by the {@link WorkspaceView}.
-     */
-    private void continueDragging(DragEvent event) {
-        updateBlockPosition(event);
-
-        // highlight as we go
-        if (mHighlightedBlockView != null) {
-            mHighlightedBlockView.setHighlightedConnection(null);
-        }
-        Pair<Connection, Connection> connectionCandidate =
-                findBestConnection(mPendingDrag.getRootDraggedBlock());
-        if (connectionCandidate != null) {
-            mHighlightedBlockView = mViewHelper.getView(connectionCandidate.second.getBlock());
-            mHighlightedBlockView.setHighlightedConnection(connectionCandidate.second);
-        }
-
-        mPendingDrag.getDragGroup().requestLayout();
-    }
-
-    /**
-     * Attempts to connect a dropped drag group with nearby connections
-     */
-    void maybeConnectDragGroup() {
-        Block dragRoot = mPendingDrag.getRootDraggedBlock();
-
-        // Maybe snap to connections.
-        Pair<Connection, Connection> connectionCandidate = findBestConnection(dragRoot);
-        if (connectionCandidate != null) {
-            mController.connect(connectionCandidate.first, connectionCandidate.second);
-            // .connect(..) includes bumping block within snap distance of the new location.
-        } else {
-            // Even if no connection is found, still bump any neighbors within snap distance of the
-            // new location.
-            mController.bumpNeighbors(dragRoot);
-        }
-    }
-
-    /**
-     * Finish a drag gesture and clear pending drag info.  Called by event handlers for ACTION_UP,
-     * ACTION_CANCEL, ACTION_DROP, and ACTION_DRAG_ENDED.
-     */
-    // TODO(305): Revert actions when behavior == FINISH_BEHAVIOR_REVERT
-    private void finishDragging(@FinishDragBehavior int behavior) {
-        if (behavior == FINISH_BEHAVIOR_DROP || behavior == FINISH_BEHAVIOR_REVERT) {
-            // Update the drag group so that everything that has been changed will be properly
-            // invalidated. Also, update the positions of all of the connections that were impacted
-            // by the move and add them back to the manager. All of the connection locations will be
-            // set relative to their block views immediately after this loop.  For now we just want
-            // to unset drag mode and add the connections back to the list; 0, 0 is a cheap place to
-            // put them.
-            // Dragged connections may be empty, especially if the
-            for (int i = 0; i < mDraggedConnections.size(); i++) {
-                Connection cur = mDraggedConnections.get(i);
-                cur.setPosition(0, 0);
-                cur.setDragMode(false);
-                mConnectionManager.addConnection(cur);
-            }
-        }
-        mDraggedConnections.clear();
-
-        if (mHighlightedBlockView != null) {
-            mHighlightedBlockView.setHighlightedConnection(null);
-            mHighlightedBlockView = null;
-        }
-
-        if (mPendingDrag != null) {
-            BlockView blockView = mPendingDrag.getRootDraggedBlockView();
-            if (blockView != null) {
-                ((View) blockView).setPressed(false);
-            } // else, trashing or similar manipulation made the view disappear.
-            mPendingDrag = null;
-        }
     }
 
     public void setWorkspaceView(WorkspaceView view) {
@@ -462,7 +308,11 @@ public class BlockViewDragUtils {
                     if (!interceptMode && mPendingDrag.isClick()) {
                         blockGestureHandler.onBlockClicked(mPendingDrag);
                     }
-                    finishDragging(FINISH_BEHAVIOR_REVERT);
+                    BlockView blockView = mPendingDrag.getRootDraggedBlockView();
+                    if (blockView != null) {
+                        ((View) blockView).setPressed(false);
+                    } // else, trashing or similar manipulation made the view disappear.
+                    mPendingDrag = null;
                 }
                 result = !interceptMode;
             } else {
@@ -478,19 +328,13 @@ public class BlockViewDragUtils {
     }
 
     /**
-     * @return The listener to use for {@link DragEvent}'s in the {@link WorkspaceView}.
-     */
-    public View.OnDragListener getDragEventListener() {
-        return mDragEventListener;
-    }
-
-    /**
      * Checks whether {@code actionMove} is beyond the allowed slop (i.e., unintended) drag motion
      * distance.
      *
      * @param actionMove The {@link MotionEvent#ACTION_MOVE} event.
      * @return True if the motion is beyond the allowed slop threshold
      */
+    // TODO(#): Replace with GestureDetector onScroll.
     private boolean isBeyondSlopThreshold(MotionEvent actionMove) {
         BlockView touchedView = mPendingDrag.getTouchedBlockView();
 
@@ -511,8 +355,8 @@ public class BlockViewDragUtils {
     /**
      * Handle motion events while starting to drag a block.  This keeps track of whether the block
      * has been dragged more than {@code mTouchSlop} and starts a drag if necessary. Once the drag
-     * has been started, all following events will be handled through the {@link
-     * #mDragEventListener}.
+     * has been started, all following events will be handled through view
+     * {@link View.OnDragListener}s.
      *
      * @param blockGestureHandler The {@link BlockView.GestureHandler} managing this drag.
      */
@@ -543,16 +387,13 @@ public class BlockViewDragUtils {
                         try {
                             ClipData clipData = mClipHelper.buildDragClipData(pendingDrag);
 
-                            Block rootBlock = dragGroup.getFirstBlock();
-                            removeDraggedConnectionsFromConnectionManager(rootBlock);
-
                             int dragFlags = 0;
                             if (android.os.Build.VERSION.SDK_INT >= 24) {
                                 // TODO(#): Allow app to configure DRAG_FLAG_GLOBAL or _OPAQUE?
                                 dragFlags |= 0x00000100;  // View.DRAG_FLAG_GLOBAL
                                 dragFlags |= 0x00000200;  // View.DRAG_FLAG_OPAQUE
                             }
-                            dragGroup.startDrag(
+                            mWorkspaceView.startDrag(
                                     clipData,
                                     new DragShadowBuilder(pendingDrag),
                                     pendingDrag,
@@ -579,7 +420,7 @@ public class BlockViewDragUtils {
      * coordinates.
      * @return Whether the event was on top of the trash can button.
      */
-    // TODO(#210): Generalize this to other possible block drop targets.
+    // TODO(#): Use DragEvent DRAG_ENTERED / DRAG_EXITED in TrashIconView
     private boolean touchingTrashView(DragEvent event) {
         if (mTrashView == null) {
             return false;
@@ -588,7 +429,9 @@ public class BlockViewDragUtils {
         mTrashView.getLocationOnScreen(mTempScreenCoord1);
         mTrashView.getHitRect(mTrashRect);
 
-        mTrashRect.offset((mTempScreenCoord1[0] - mTrashRect.left), (mTempScreenCoord1[1] - mTrashRect.top));
+        mTrashRect.offset(
+                (mTempScreenCoord1[0] - mTrashRect.left),
+                (mTempScreenCoord1[1] - mTrashRect.top));
         // Get the touch location on the screen
         mTempViewPoint.set((int) event.getX(), (int) event.getY());
         mViewHelper.virtualViewToScreenCoordinates(mTempViewPoint, mTempViewPoint);
@@ -600,60 +443,10 @@ public class BlockViewDragUtils {
     /**
      * Ends a drag in the trash can, clearing state and deleting blocks as needed.
      */
+    // TODO(#): Move to OnDragListener in TrashIconView.
     private boolean dropInTrash() {
-        if (mHighlightedBlockView != null) {
-            mHighlightedBlockView.setHighlightedConnection(null);
-            mHighlightedBlockView = null;
-        }
         mDraggedConnections.clear();
         return mController.trashRootBlock(mPendingDrag.getRootDraggedBlock());
-    }
-
-    /**
-     * Removes all connections of block and its descendants from the {@link }ConnectionManager}, so
-     * these connections are not considered as potential connections when looking from connections
-     * during dragging.
-     *
-     * @param block The root block of connections that should be removed.
-     */
-    private void removeDraggedConnectionsFromConnectionManager(Block block) {
-        mDraggedConnections.clear();
-        // Don't track any of the connections that we're dragging around.
-        block.getAllConnectionsRecursive(mDraggedConnections);
-        for (int i = 0; i < mDraggedConnections.size(); i++) {
-            Connection conn = mDraggedConnections.get(i);
-            mConnectionManager.removeConnection(conn);
-            conn.setDragMode(true);
-        }
-    }
-
-    /**
-     * Move the currently dragged block in response to a new {@link MotionEvent}.
-     * <p/>
-     * All of the child blocks move with the root block based on its position during layout.
-     *
-     * @param event The {@link MotionEvent} to react to.
-     */
-    private void updateBlockPosition(DragEvent event) {
-        // The event is relative to the WorkspaceView. Grab the pixel offset within.
-        ViewPoint curDragLocationPixels = mTempViewPoint;
-        curDragLocationPixels.set((int) event.getX(), (int) event.getY());
-        WorkspacePoint curDragPositionWorkspace = mTempWorkspacePoint;
-        mViewHelper.virtualViewToWorkspaceCoordinates(curDragLocationPixels, curDragPositionWorkspace);
-
-        WorkspacePoint touchDownWorkspace = mPendingDrag.getTouchDownWorkspaceCoordinates();
-        // Subtract original drag location from current location to get delta
-        int workspaceDeltaX = curDragPositionWorkspace.x - touchDownWorkspace.x;
-        int workspaceDeltaY = curDragPositionWorkspace.y - touchDownWorkspace.y;
-
-        WorkspacePoint blockOrigPosition = mPendingDrag.getOriginalBlockPosition();
-        mPendingDrag.getRootDraggedBlock().setPosition(blockOrigPosition.x + workspaceDeltaX,
-                                                blockOrigPosition.y + workspaceDeltaY);
-        mPendingDrag.getDragGroup().requestLayout();
-    }
-
-    private Pair<Connection, Connection> findBestConnection(Block block) {
-        return mConnectionManager.findBestConnection(block, mViewHelper.getMaxSnapDistance());
     }
 
     private static class DragShadowBuilder extends View.DragShadowBuilder {

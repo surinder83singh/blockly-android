@@ -32,6 +32,7 @@ import com.google.blockly.android.ToolboxFragment;
 import com.google.blockly.android.TrashFragment;
 import com.google.blockly.android.WorkspaceFragment;
 import com.google.blockly.android.clipboard.BlockClipDataHelper;
+import com.google.blockly.android.clipboard.SingleMimeTypeClipDataHelper;
 import com.google.blockly.android.ui.BlockViewDragUtils;
 import com.google.blockly.android.ui.BlockGroup;
 import com.google.blockly.android.ui.BlockTouchHandler;
@@ -166,7 +167,7 @@ public class BlocklyController {
                                     + pendingDrag.getTouchDownViewOffsetX()),
                             (int) (activeTouchedView.getY()
                                     + pendingDrag.getTouchDownViewOffsetY()));
-                    pendingDrag.startDrag(bg, touchOffset);
+                    pendingDrag.startDrag(mWorkspaceView, bg, touchOffset);
                 }
             };
         }
@@ -573,7 +574,6 @@ public class BlocklyController {
 
         mHelper.setWorkspaceView(wv);
         mDragUtils.setWorkspaceView(mWorkspaceView);
-        mWorkspaceView.setBlockViewDragUtils(mDragUtils);
         initBlockViews();
     }
 
@@ -1705,6 +1705,9 @@ public class BlocklyController {
 
 
         public Builder(Context context) {
+            if (context == null) {
+                throw new NullPointerException("BlocklyController context cannot be null");
+            }
             mContext = context;
         }
 
@@ -1892,9 +1895,14 @@ public class BlocklyController {
                 throw new IllegalStateException(
                         "BlockViewFactory cannot be null when using Fragments.");
             }
+            BlockClipDataHelper blockClipDataHelper = mClipHelper;
+            if (blockClipDataHelper == null) {
+                blockClipDataHelper = SingleMimeTypeClipDataHelper.getDefault(mContext);
+            }
 
-            if (mWorkspaceHelper == null) {
-                mWorkspaceHelper = new WorkspaceHelper(mContext);
+            WorkspaceHelper workspaceHelper = mWorkspaceHelper;
+            if (workspaceHelper == null) {
+                workspaceHelper = new WorkspaceHelper(mContext);
             }
             BlockFactory factory = new BlockFactory(mContext, null);
             for (int i = 0; i < mBlockDefResources.size(); i++) {
@@ -1920,7 +1928,7 @@ public class BlocklyController {
                 factory.addBlockTemplate(mBlockDefs.get(i));
             }
             BlocklyController controller = new BlocklyController(
-                    mContext, factory, mWorkspaceHelper, mClipHelper, mViewFactory);
+                    mContext, factory, workspaceHelper, blockClipDataHelper, mViewFactory);
             if (mToolboxResId != 0) {
                 controller.loadToolboxContents(mToolboxResId);
             } else if (mToolboxXml != null) {

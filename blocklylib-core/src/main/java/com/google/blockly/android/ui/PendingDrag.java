@@ -6,11 +6,14 @@ import android.support.v4.view.GestureDetectorCompat;
 import android.support.v4.view.MotionEventCompat;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
+import android.view.View;
 
 import com.google.blockly.android.control.BlocklyController;
 import com.google.blockly.model.Block;
 import com.google.blockly.model.Workspace;
 import com.google.blockly.model.WorkspacePoint;
+
+import java.lang.ref.WeakReference;
 
 /**
  * {@code PendingDrag} collects all the information related to an in-progress drag of a
@@ -66,6 +69,7 @@ public final class PendingDrag {
     private long mLatestEventTime;
     private boolean mAlive = true;
     private boolean mClicked;
+    private WeakReference<View> mDragInitiatorRef = new WeakReference<>(null);
 
     /**
      * Constructs a new PendingDrag that, if accepted by the GestureHandler, begins with the
@@ -157,11 +161,17 @@ public final class PendingDrag {
      * {@code dragGroup} must be a root block added to the {@link WorkspaceView}, with it's first
      * {@link Block} added as a root block in the {@link Workspace}.
      *
+     * @param dragInitiator The view that initiated the drag.
      * @param dragGroup The draggable {@link BlockGroup}.
      * @param touchOffset The touch offset from the top left corner of {@code dragGroup}, in view
      *                    pixels.
      */
-    public void startDrag(@NonNull BlockGroup dragGroup, ViewPoint touchOffset) {
+    public void startDrag(
+            @NonNull View dragInitiator,
+            @NonNull BlockGroup dragGroup,
+            @NonNull ViewPoint touchOffset) {
+        mDragInitiatorRef = new WeakReference<>(dragInitiator);
+
         if (dragGroup == null) {
             throw new IllegalArgumentException("DragGroup cannot be null");
         }
@@ -182,6 +192,10 @@ public final class PendingDrag {
 
         mOriginalBlockPosition.setFrom(dragGroup.getFirstBlock().getPosition());
         mDragTouchOffset = touchOffset;
+    }
+
+    public View getDragInitiator() {
+        return mDragInitiatorRef.get();
     }
 
     /**

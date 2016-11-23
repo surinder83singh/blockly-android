@@ -276,6 +276,13 @@ public abstract class AbstractBlocklyActivity extends AppCompatActivity {
     }
 
     /**
+     * @return The {@link BlockClipDataHelper} for this Activity.
+     */
+    public BlockClipDataHelper getClipDataHelper() {
+        return mClipDataHelper;
+    }
+
+    /**
      * @return The {@link BlocklyController} controlling the workspace in this activity.
      */
     public final BlocklyController getController() {
@@ -401,9 +408,7 @@ public abstract class AbstractBlocklyActivity extends AppCompatActivity {
      * @return A new {@link BlockClipDataHelper}.
      */
     protected BlockClipDataHelper onCreateClipDataHelper() {
-        String packageName = getApplication().getPackageName();
-        String mimeType = "application/x-blockly-" + packageName + "+xml";
-        return new SingleMimeTypeClipDataHelper(mimeType, R.string.blockly_clipdata_label_default);
+        return SingleMimeTypeClipDataHelper.getDefault(this);
     }
 
     /**

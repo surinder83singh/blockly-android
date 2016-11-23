@@ -112,7 +112,7 @@ public class CategoryTabs extends RecyclerView {
 
         TypedArray a = context.getTheme().obtainStyledAttributes(
                 attrs,
-                R.styleable.ToolboxFragment,
+                R.styleable.CategoryTabs,
                 0, 0);
         try {
             //noinspection ResourceType

@@ -18,6 +18,7 @@ package com.google.blockly.android.ui;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.any;
 
+import android.content.ClipDescription;
 import android.content.Context;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -28,6 +29,7 @@ import android.view.MotionEvent;
 
 import com.google.blockly.android.MockitoAndroidTestCase;
 import com.google.blockly.android.R;
+import com.google.blockly.android.clipboard.BlockClipDataHelper;
 import com.google.blockly.android.control.BlocklyController;
 import com.google.blockly.android.control.ConnectionManager;
 import com.google.blockly.android.ui.vertical.VerticalBlockViewFactory;
@@ -40,6 +42,7 @@ import org.mockito.AdditionalAnswers;
 import org.mockito.Matchers;
 import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.internal.matchers.Any;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
@@ -67,6 +70,8 @@ public class BlockViewDragUtilsTest extends MockitoAndroidTestCase {
     Workspace mMockWorkspace;
     @Mock
     ConnectionManager mMockConnectionManager;
+    @Mock
+    BlockClipDataHelper mMockBlockClipDataHelper;
 
     @Mock
     DragEvent mDragStartedEvent;
@@ -114,7 +119,7 @@ public class BlockViewDragUtilsTest extends MockitoAndroidTestCase {
         @Override
         public void run() {
             ++mDragGroupCreatorCallCount;
-            mPendingDrag.startDrag(mDragGroup, new ViewPoint());
+            mPendingDrag.startDrag(mWorkspaceView, mDragGroup, new ViewPoint());
             mDragGroupCreatorLatch.countDown();
         }
     };
@@ -145,15 +150,33 @@ public class BlockViewDragUtilsTest extends MockitoAndroidTestCase {
                 mViewFactory = new VerticalBlockViewFactory(mMockContext, mWorkspaceHelper);
 
                 // The following are queried by the BlockViewDragUtils.
-                Mockito.stub(mMockWorkspace.getConnectionManager()).toReturn(mMockConnectionManager);
-                Mockito.stub(mMockController.getBlockFactory()).toReturn(mBlockFactory);
-                Mockito.stub(mMockController.getWorkspace()).toReturn(mMockWorkspace);
-                Mockito.stub(mMockController.getWorkspaceHelper()).toReturn(mWorkspaceHelper);
-                Mockito.stub(mMockController.getContext()).toReturn(mMockContext);
+                Mockito.stub(mMockWorkspace.getConnectionManager())
+                        .toReturn(mMockConnectionManager);
+                Mockito.stub(mMockController.getBlockFactory())
+                        .toReturn(mBlockFactory);
+                Mockito.stub(mMockController.getWorkspace())
+                        .toReturn(mMockWorkspace);
+                Mockito.stub(mMockController.getWorkspaceHelper())
+                        .toReturn(mWorkspaceHelper);
+                Mockito.stub(mMockController.getContext())
+                        .toReturn(mMockContext);
+                Mockito.stub(mMockController.getClipDataHelper())
+                        .toReturn(mMockBlockClipDataHelper);
+
+                Mockito.when(mMockBlockClipDataHelper.getPendingDrag(any(DragEvent.class)))
+                        .then(new Answer<PendingDrag>() {
+                            @Override
+                            public PendingDrag answer(InvocationOnMock invocationOnMock)
+                                    throws Throwable
+                            {
+                                return mPendingDrag;
+                            }
+                        });
 
                 mDragUtils = new BlockViewDragUtils(mMockController);
                 mDragUtils.setWorkspaceView(mWorkspaceView);
                 mTouchHandler = mDragUtils.buildSloppyBlockTouchHandler(mBlockGestureHandler);
+                mWorkspaceView.setController(mMockController);
 
                 // Since we can't create DragEvents...
                 when(mDragStartedEvent.getAction()).thenReturn(DragEvent.ACTION_DRAG_STARTED);
@@ -170,13 +193,12 @@ public class BlockViewDragUtilsTest extends MockitoAndroidTestCase {
         super.tearDown();
     }
 
-    /* This set of tests covers the full sequence of dragging operations.
-     * Because we're skipping layout, the connector locations will never be exactly perfect.
-     * Calling updateConnectorLocations puts all of the connections on a block at the
-     * workspace position of that block.
-     */
+    /// This set of tests covers the full sequence of dragging operations.
+    /// Because we're skipping layout, the connector locations will never be exactly perfect.
+    /// Calling updateConnectorLocations puts all of the connections on a block at the
+    /// workspace position of that block.
 
-    // Drag together two compatible blocks.
+    /** Drag together two compatible blocks. */
     public void testDragConnect() {
 
         // Setup
@@ -184,6 +206,8 @@ public class BlockViewDragUtilsTest extends MockitoAndroidTestCase {
                 "simple_input_output", "first block");
         mTargetBlock = mBlockFactory.obtainBlock("output_no_input", "second block");
 
+        Mockito.when(mMockBlockClipDataHelper.isBlockData(any(ClipDescription.class)))
+                .thenReturn(true);
         Mockito.when(mMockConnectionManager.findBestConnection(Matchers.same(mTouchedBlock), anyInt()))
                 .thenReturn(Pair.create(mTouchedBlock.getOnlyValueInput().getConnection(),
                         mTargetBlock.getOutputConnection()));
@@ -198,13 +222,15 @@ public class BlockViewDragUtilsTest extends MockitoAndroidTestCase {
                 mTargetBlock.getOutputConnection());
     }
 
-    // Drag together two incompatible blocks.
+    /** Drag together two incompatible blocks. */
     public void testDragNoConnect() {
         // Setup
         mTouchedBlock = mDraggedBlock = mBlockFactory.obtainBlock(
                 "simple_input_output", "first block");
         mTargetBlock = mBlockFactory.obtainBlock("output_no_input", "second block");
 
+        Mockito.when(mMockBlockClipDataHelper.isBlockData(any(ClipDescription.class)))
+                .thenReturn(true);
         Mockito.when(mMockConnectionManager.findBestConnection(any(Block.class), anyInt()))
                 .thenReturn(null);
 
@@ -225,6 +251,9 @@ public class BlockViewDragUtilsTest extends MockitoAndroidTestCase {
         Block draggedChild = mBlockFactory.obtainBlock("multiple_input_output", "third block");
         mDraggedBlock.getOnlyValueInput().getConnection().connect(
                 draggedChild.getOutputConnection());
+
+        Mockito.when(mMockBlockClipDataHelper.isBlockData(any(ClipDescription.class)))
+                .thenReturn(true);
 
         ArrayList<Connection> draggedConnections = new ArrayList<>();
         mDraggedBlock.getAllConnectionsRecursive(draggedConnections);
@@ -362,7 +391,7 @@ public class BlockViewDragUtilsTest extends MockitoAndroidTestCase {
         runAndSync(new Runnable() {
             @Override
             public void run() {
-                mDragUtils.getDragEventListener().onDrag(mWorkspaceView, mDragStartedEvent);
+                mWorkspaceView.mDragEventListener.onDrag(mWorkspaceView, mDragStartedEvent);
             }
         }, TIMEOUT);
 
@@ -377,7 +406,7 @@ public class BlockViewDragUtilsTest extends MockitoAndroidTestCase {
                 when(mDragLocationEvent.getX()).thenReturn(mDragReleaseX);
                 when(mDragLocationEvent.getY()).thenReturn(mDragReleaseY);
 
-                mDragUtils.getDragEventListener().onDrag(mWorkspaceView, mDragLocationEvent);
+                mWorkspaceView.mDragEventListener.onDrag(mWorkspaceView, mDragLocationEvent);
 
                 // Force the connector locations to update before the call to finishDragging().
                 mDragGroup.updateAllConnectorLocations();
@@ -387,7 +416,7 @@ public class BlockViewDragUtilsTest extends MockitoAndroidTestCase {
                 when(mDropEvent.getX()).thenReturn(mDragReleaseX);
                 when(mDropEvent.getY()).thenReturn(mDragReleaseY);
 
-                mDragUtils.getDragEventListener().onDrag(mWorkspaceView, mDropEvent);
+                mWorkspaceView.mDragEventListener.onDrag(mWorkspaceView, mDropEvent);
             }
         }, TIMEOUT);
     }

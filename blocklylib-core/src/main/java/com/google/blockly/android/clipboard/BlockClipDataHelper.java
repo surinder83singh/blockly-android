@@ -16,6 +16,8 @@
 package com.google.blockly.android.clipboard;
 
 import android.content.ClipData;
+import android.content.ClipDescription;
+import android.view.DragEvent;
 
 import com.google.blockly.android.control.BlocklyController;
 import com.google.blockly.android.ui.BlockViewFactory;
@@ -44,14 +46,6 @@ public interface BlockClipDataHelper {
     void setController(BlocklyController controller);
 
     /**
-     * This determines whether an incoming {@link ClipData} is a representation of Blockly
-     * {@link Block}s that can be handled by this {@link BlockClipDataHelper}.
-     *
-     * @param clipData The incoming clipboard data.
-     */
-    boolean isBlockData(ClipData clipData);
-
-    /**
      * Constructs a new populated {@link ClipData} using the information from a {@link PendingDrag}.
      * It also sets the PendingDrag as the backing local state.
      *
@@ -59,4 +53,21 @@ public interface BlockClipDataHelper {
      * @return A new {@link ClipData} representing the drag and dragged {@link BlockGroup}.
      */
     ClipData buildDragClipData(PendingDrag pendingDrag) throws IOException;
+
+    /**
+     * This determines whether an incoming {@link ClipData} is a representation of Blockly
+     * {@link Block}s that can be handled by this {@link BlockClipDataHelper}.
+     *
+     * @param descript A description of the incoming clipboard data.
+     * @return True if the MIME type is found.
+     */
+    boolean isBlockData(ClipDescription descript);
+
+    /**
+     * Extracts a PendingDrag from a {@link DragEvent}.
+     *
+     * @param event
+     * @return Pending
+     */
+    PendingDrag getPendingDrag(DragEvent event);
 }

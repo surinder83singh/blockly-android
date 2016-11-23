@@ -222,6 +222,7 @@ public class BlockListView extends RecyclerView {
                             getWorkspaceBlockGroupForTouch(pendingDrag);
                     if (dragGroupAndTouchOffset != null) {
                         pendingDrag.startDrag(
+                                BlockListView.this,
                                 dragGroupAndTouchOffset.first,
                                 dragGroupAndTouchOffset.second);
                     }
