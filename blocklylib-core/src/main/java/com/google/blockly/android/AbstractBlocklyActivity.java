@@ -374,8 +374,13 @@ public abstract class AbstractBlocklyActivity extends AppCompatActivity {
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(
                     "Default BlockViewFactory not found. Did you include blocklylib-vertical?", e);
-        } catch (NoSuchMethodException | InstantiationException |
-                IllegalAccessException | InvocationTargetException e) {
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException("Unable to instantiate VerticalBlockViewFactory", e);
+        } catch (InstantiationException e) {
+            throw new RuntimeException("Unable to instantiate VerticalBlockViewFactory", e);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException("Unable to instantiate VerticalBlockViewFactory", e);
+        } catch (InvocationTargetException e) {
             throw new RuntimeException("Unable to instantiate VerticalBlockViewFactory", e);
         }
     }
