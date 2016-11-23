@@ -17,7 +17,6 @@ package com.google.blockly.android.ui;
 
 import android.content.ClipData;
 import android.graphics.Point;
-import android.graphics.Rect;
 import android.os.Handler;
 import android.support.annotation.IntDef;
 import android.support.annotation.Size;
@@ -32,10 +31,8 @@ import android.view.ViewParent;
 
 import com.google.blockly.android.clipboard.BlockClipDataHelper;
 import com.google.blockly.android.control.BlocklyController;
-import com.google.blockly.android.control.ConnectionManager;
 import com.google.blockly.model.Block;
 import com.google.blockly.model.Connection;
-import com.google.blockly.model.Workspace;
 
 import java.io.IOException;
 import java.lang.annotation.Retention;
@@ -56,8 +53,10 @@ public class BlockViewDragUtils {
         int action = event.getAction();
         return (action == DragEvent.ACTION_DRAG_STARTED) ? "DRAG_STARTED" :
                 (action == DragEvent.ACTION_DRAG_LOCATION) ? "DRAG_LOCATION" :
-                (action == DragEvent.ACTION_DRAG_ENDED) ? "DRAG_ENDED" :
+                (action == DragEvent.ACTION_DRAG_ENTERED) ? "DRAG_ENTERED" :
+                (action == DragEvent.ACTION_DRAG_EXITED) ? "DRAG_EXITED" :
                 (action == DragEvent.ACTION_DROP) ? "DROP" :
+                (action == DragEvent.ACTION_DRAG_ENDED) ? "DRAG_ENDED" :
                 "UNKNOWN ACTION #" + action;
     }
 
@@ -70,19 +69,13 @@ public class BlockViewDragUtils {
     private final ArrayList<Connection> mDraggedConnections = new ArrayList<>();
     // For use in bumping neighbours; instance variable only to avoid repeated allocation.
     private final ArrayList<Connection> mTempConnections = new ArrayList<>();
-    // Rect for finding the bounding box of the trash can view.
-    private final Rect mTrashRect = new Rect();
     // For use in getting location on screen.
     private final int[] mTempScreenCoord1 = new int[2];
     private final int[] mTempScreenCoord2 = new int[2];
-    private final ViewPoint mTempViewPoint = new ViewPoint();
 
     private Handler mMainHandler;
     private final BlocklyController mController;
-    private final WorkspaceHelper mViewHelper;
     private final BlockClipDataHelper mClipHelper;
-    private final Workspace mWorkspace;
-    private final ConnectionManager mConnectionManager;
 
     /**
      * This flags helps check {@link #onTouchBlockImpl} is not called recursively, which can occur
@@ -102,8 +95,6 @@ public class BlockViewDragUtils {
 
     // Which {@link BlockView} was touched, and possibly may be being dragged.
     private WorkspaceView mWorkspaceView;
-    // The view for the trash can.
-    private View mTrashView;
     //The square of the required touch slop before starting a drag, precomputed to avoid
     // square root operations at runtime.
     private float mTouchSlopSquared = 0.0f;
@@ -113,10 +104,7 @@ public class BlockViewDragUtils {
      */
     public BlockViewDragUtils(BlocklyController blocklyController) {
         mController = blocklyController;
-        mWorkspace = blocklyController.getWorkspace();
-        mViewHelper = blocklyController.getWorkspaceHelper();
         mClipHelper = blocklyController.getClipDataHelper();
-        mConnectionManager = mWorkspace.getConnectionManager();
 
         mMainHandler = new Handler();
 
@@ -202,11 +190,6 @@ public class BlockViewDragUtils {
 
     public void setWorkspaceView(WorkspaceView view) {
         mWorkspaceView = view;
-    }
-
-    // TODO(#210): Generalize this to other possible block drop targets.
-    public void setTrashView(View trashView) {
-        mTrashView = trashView;
     }
 
     /**
@@ -410,43 +393,6 @@ public class BlockViewDragUtils {
         }
 
         return foundDragGroup;
-    }
-
-    /**
-     * Check whether the given event occurred on top of the trash can button.  Should be called from
-     * {@link WorkspaceView}.
-     *
-     * @param event The event whose location should be checked, with position in WorkspaceView
-     * coordinates.
-     * @return Whether the event was on top of the trash can button.
-     */
-    // TODO(#): Use DragEvent DRAG_ENTERED / DRAG_EXITED in TrashIconView
-    private boolean touchingTrashView(DragEvent event) {
-        if (mTrashView == null) {
-            return false;
-        }
-
-        mTrashView.getLocationOnScreen(mTempScreenCoord1);
-        mTrashView.getHitRect(mTrashRect);
-
-        mTrashRect.offset(
-                (mTempScreenCoord1[0] - mTrashRect.left),
-                (mTempScreenCoord1[1] - mTrashRect.top));
-        // Get the touch location on the screen
-        mTempViewPoint.set((int) event.getX(), (int) event.getY());
-        mViewHelper.virtualViewToScreenCoordinates(mTempViewPoint, mTempViewPoint);
-
-        // Check if the touch location was on the trash
-        return mTrashRect.contains(mTempViewPoint.x, mTempViewPoint.y);
-    }
-
-    /**
-     * Ends a drag in the trash can, clearing state and deleting blocks as needed.
-     */
-    // TODO(#): Move to OnDragListener in TrashIconView.
-    private boolean dropInTrash() {
-        mDraggedConnections.clear();
-        return mController.trashRootBlock(mPendingDrag.getRootDraggedBlock());
     }
 
     private static class DragShadowBuilder extends View.DragShadowBuilder {

@@ -341,7 +341,6 @@ public class WorkspaceView extends NonPropagatingViewGroup {
                         // Finalize dragging and reset dragging state flags.
                         // These state flags are still used in the initial phase of figuring out if a
                         // drag has started.
-                        int finishBehavior;
                         maybeConnectDragGroup();
                         finishDragging();  // TODO(#) remove when pre-drag side-effects of old code are removed.
                         return true;    // The drop succeeded.

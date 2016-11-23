@@ -8,6 +8,7 @@ import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 
+import com.google.blockly.android.BuildConfig;
 import com.google.blockly.android.control.BlocklyController;
 import com.google.blockly.model.Block;
 import com.google.blockly.model.Workspace;
@@ -21,8 +22,7 @@ import java.lang.ref.WeakReference;
  * {@link BlockView.GestureHandler} which calls {@link #startDrag} to inform the
  * {@link BlockViewDragUtils} how to complete the rest of the drag behavior.
  */
-// TODO(#233): Rename to PendingGesture or similar
-public final class PendingDrag {
+public class PendingDrag {
     /**
      * This threshold is used to detect bad state from invalid MotionEvent streams.  There are cases
      * where an intercepting OnTouchListener never receives an appropriate ACTION_CANCEL or
@@ -81,7 +81,9 @@ public final class PendingDrag {
      */
     PendingDrag(@NonNull BlocklyController controller,
                 @NonNull BlockView touchedView, @NonNull MotionEvent actionDown) {
-        assert (actionDown.getAction() == MotionEvent.ACTION_DOWN);
+        if (actionDown.getAction() != MotionEvent.ACTION_DOWN) {
+            throw new IllegalArgumentException();
+        }
 
         mController = controller;
         mHelper = controller.getWorkspaceHelper();

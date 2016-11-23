@@ -58,16 +58,17 @@ public interface BlockClipDataHelper {
      * This determines whether an incoming {@link ClipData} is a representation of Blockly
      * {@link Block}s that can be handled by this {@link BlockClipDataHelper}.
      *
-     * @param descript A description of the incoming clipboard data.
+     * @param clipDescrip A description of the incoming clipboard data.
      * @return True if the MIME type is found.
      */
-    boolean isBlockData(ClipDescription descript);
+    boolean isBlockData(ClipDescription clipDescrip);
 
     /**
-     * Extracts a PendingDrag from a {@link DragEvent}.
+     * Extracts a PendingDrag from a {@link DragEvent}. Assumes the {@link #isBlockData} has been
+     * called and returned {@link true}.
      *
-     * @param event
-     * @return Pending
+     * @param event A block drag event.
+     * @return The PendingDrag for {@code event}
      */
     PendingDrag getPendingDrag(DragEvent event);
 }

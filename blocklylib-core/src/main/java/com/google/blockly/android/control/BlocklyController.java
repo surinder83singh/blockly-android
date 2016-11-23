@@ -324,7 +324,6 @@ public class BlocklyController {
             return; // no-op
         }
         mTrashIcon = trashIcon;
-        mDragUtils.setTrashView(mTrashIcon);
     }
 
     /**
@@ -1946,7 +1945,6 @@ public class BlocklyController {
             controller.setWorkspaceFragment(mWorkspaceFragment);
             controller.setTrashFragment(mTrashFragment);
             controller.setToolboxFragment(mToolboxFragment);
-            controller.setTrashIcon(mTrashIcon);
             controller.setVariableCallback(mVariableCallback);
 
             return controller;
