@@ -15,11 +15,8 @@
 
 package com.google.blockly.android;
 
-import android.content.Context;
-import android.content.res.TypedArray;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
-import android.util.AttributeSet;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -45,53 +42,16 @@ import com.google.blockly.model.Workspace;
  *     android:id="@+id/blockly_workspace"
  *     android:layout_width="match_parent"
  *     android:layout_height="match_parent"
- *     <b>blockly:scrollable</b>="true"
  *     /&gt;
  * </pre></blockquote>
  */
 public class WorkspaceFragment extends Fragment {
     private static final String TAG = "WorkspaceFragment";
 
-    public static final boolean DEFAULT_SCROLLABLE = true;
-    public static final boolean DEFAULT_SCALABLE = true;
-
-    public static final String ARG_SCROLLABLE = "WorkspaceFragment_scrollable";
-    public static final String ARG_SCALABLE = "WorkspaceFragment_scalable";
-
     private BlocklyController mController;
     private Workspace mWorkspace;
     private VirtualWorkspaceView mVirtualWorkspaceView;
     private WorkspaceView mWorkspaceView;
-
-    private boolean mScrollable = true;
-    private boolean mScalable = true;
-
-    @Override
-    public void onInflate(Context context, AttributeSet attrs, Bundle savedInstanceState) {
-        super.onInflate(context, attrs, savedInstanceState);
-
-        TypedArray a = context.getTheme().obtainStyledAttributes(
-                attrs,
-                R.styleable.WorkspaceFragment,
-                0, 0);
-        try {
-            //noinspection ResourceType
-            mScrollable =
-                    a.getBoolean(R.styleable.WorkspaceFragment_scrollable, DEFAULT_SCROLLABLE);
-            mScalable =
-                    a.getBoolean(R.styleable.WorkspaceFragment_scalable, DEFAULT_SCALABLE);
-        } finally {
-            a.recycle();
-        }
-
-        // Store values in arguments, so fragment resume works (no inflation during resume).
-        Bundle args = getArguments();
-        if (args == null) {
-            setArguments(args = new Bundle());
-        }
-        args.putBoolean(ARG_SCROLLABLE, mScrollable);
-        args.putBoolean(ARG_SCALABLE, mScalable);
-    }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -102,10 +62,6 @@ public class WorkspaceFragment extends Fragment {
         mVirtualWorkspaceView =
                 (VirtualWorkspaceView) rootView.findViewById(R.id.virtual_workspace);
         mWorkspaceView = (WorkspaceView) rootView.findViewById(R.id.workspace);
-
-        mVirtualWorkspaceView.setScrollable(mScrollable);
-        mVirtualWorkspaceView.setScalable(mScalable);
-
         return rootView;
     }
 
@@ -125,14 +81,9 @@ public class WorkspaceFragment extends Fragment {
         mController.initWorkspaceView(mWorkspaceView);
     }
 
-    public boolean getScrollable() {
-        return mScrollable;
-    }
-
-    public void setScrollable(boolean scrollable) {
-        mScrollable = scrollable;
+    public void setZoomBehavior(ZoomBehavior zoomBehavior){
         if (mVirtualWorkspaceView != null) {
-            mVirtualWorkspaceView.setScrollable(mScrollable);
+            mVirtualWorkspaceView.setZoomBehavior(zoomBehavior);
         }
     }
 

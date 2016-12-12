@@ -115,6 +115,7 @@ public abstract class AbstractBlocklyActivity extends AppCompatActivity {
     protected WorkspaceFragment mWorkspaceFragment;
     protected ToolboxFragment mToolboxFragment;
     protected TrashFragment mTrashFragment;
+    protected ZoomBehavior mZoomBehavior;
 
     // These two may be null if {@link #onCreateAppNavigationDrawer} returns null.
     protected View mNavigationDrawer;
@@ -322,6 +323,7 @@ public abstract class AbstractBlocklyActivity extends AppCompatActivity {
         }
 
         mWorkspaceHelper = new WorkspaceHelper(this);
+        mZoomBehavior = new ZoomBehavior(this);
         mBlockViewFactory = onCreateBlockViewFactory(mWorkspaceHelper);
 
         BlocklyController.Builder builder = new BlocklyController.Builder(this)
@@ -336,22 +338,12 @@ public abstract class AbstractBlocklyActivity extends AppCompatActivity {
                 .setToolboxFragment(mToolboxFragment, mDrawerLayout);
         mController = builder.build();
 
-        TypedArray a = getTheme().obtainStyledAttributes(
-                null,
-                R.styleable.BlocklyWorkspaceTheme,
-                0, 0);
-        boolean showZoomButtons = true;
-        try {
-            showZoomButtons = a.getBoolean(R.styleable.BlocklyWorkspaceTheme_showZoomButtons, true);
-        } finally {
-            a.recycle();
-        }
-
         onConfigureTrashIcon();
         onConfigureZoomInButton();
         onConfigureZoomOutButton();
         onConfigureCenterViewButton();
-        setZoomButtonVisibility(showZoomButtons);
+        onConfigureZoomBehavior();
+        mWorkspaceFragment.setZoomBehavior(mZoomBehavior);
 
         boolean loadedPriorInstance = checkAllowRestoreBlocklyState(savedInstanceState)
                 && mController.onRestoreSnapshot(savedInstanceState);
@@ -702,16 +694,16 @@ public abstract class AbstractBlocklyActivity extends AppCompatActivity {
      * {@link R.id#blockly_zoom_out_button}
      * from the view hierarchy according
      * <p/>
-     * @param visible
      */
-    protected void setZoomButtonVisibility(boolean visible){
+    protected void onConfigureZoomBehavior(){
         View button = findViewById(R.id.blockly_zoom_in_button);
+        int buttonVisibility = mZoomBehavior.isButtonEnabled()? View.VISIBLE : View.GONE;
         if (button != null) {
-            button.setVisibility(visible ? View.VISIBLE : View.GONE);
+            button.setVisibility(buttonVisibility);
         }
         button = findViewById(R.id.blockly_zoom_out_button);
         if (button != null) {
-            button.setVisibility(visible ? View.VISIBLE : View.GONE);
+            button.setVisibility(buttonVisibility);
         }
     }
 
